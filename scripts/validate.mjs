@@ -1,0 +1,1 @@
+import fs from 'node:fs';const req=['package.json','capacitor.config.ts','index.html','src/main.js','src/style.css','public/manifest.webmanifest'];for(const x of req)if(!fs.existsSync(x))throw Error('Missing '+x);console.log('Validation OK');
