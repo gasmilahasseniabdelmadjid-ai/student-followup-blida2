@@ -45,13 +45,21 @@ jobs:
           SFC_KEY_PASSWORD: ${{ secrets.SFC_KEY_PASSWORD }}
         run: |
           test -n "$SFC_KEYSTORE_B64" && test -n "$SFC_KEY_ALIAS" && test -n "$SFC_KEYSTORE_PASSWORD" && test -n "$SFC_KEY_PASSWORD"
-          # Decode the stored signing key, then validate it before Gradle packaging.
-          printf '%s' "$SFC_KEYSTORE_B64" | tr -d '\\r\\n ' | base64 --decode > release.keystore
-          if ! keytool -list -keystore release.keystore -storepass "$SFC_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
-            echo "::error::SFC_KEYSTORE_B64 does not decode to a valid Java keystore, or SFC_KEYSTORE_PASSWORD is incorrect."
-            echo "::error::Recreate the Base64 value from the original .jks/.keystore file and update the GitHub secret. Do not paste the key or password into logs."
-            exit 1
-          fi
+          # Decode and normalize the release keystore to PKCS12, which is explicitly supported by modern Android/Java tooling.
+          printf '%s' "$SFC_KEYSTORE_B64" | tr -d '\\r\\n ' | base64 --decode > release-source.keystore
+          keytool -list -keystore release-source.keystore -storepass "$SFC_KEYSTORE_PASSWORD" -alias "$SFC_KEY_ALIAS" >/dev/null
+          rm -f release.keystore
+          keytool -importkeystore -noprompt \
+            -srckeystore release-source.keystore \
+            -srcstorepass "$SFC_KEYSTORE_PASSWORD" \
+            -srcalias "$SFC_KEY_ALIAS" \
+            -srckeypass "$SFC_KEY_PASSWORD" \
+            -destkeystore release.keystore \
+            -deststoretype PKCS12 \
+            -deststorepass "$SFC_KEYSTORE_PASSWORD" \
+            -destalias "$SFC_KEY_ALIAS" \
+            -destkeypass "$SFC_KEY_PASSWORD"
+          keytool -list -keystore release.keystore -storetype PKCS12 -storepass "$SFC_KEYSTORE_PASSWORD" -alias "$SFC_KEY_ALIAS" >/dev/null
           export SFC_KEYSTORE_PATH="$PWD/release.keystore"
           python3 scripts/configure-release-signing.py
       - name: Build release APK
