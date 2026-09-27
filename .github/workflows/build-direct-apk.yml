@@ -38,42 +38,54 @@ jobs:
         run: npx cap sync android
       - name: Prepare Android
         run: python3 scripts/prepare-platforms.py
-      - name: Configure release signing
+      - name: Configure production release signing
         env:
           SFC_KEYSTORE_B64: ${{ secrets.SFC_KEYSTORE_B64 }}
           SFC_KEY_ALIAS: ${{ secrets.SFC_KEY_ALIAS }}
           SFC_KEYSTORE_PASSWORD: ${{ secrets.SFC_KEYSTORE_PASSWORD }}
           SFC_KEY_PASSWORD: ${{ secrets.SFC_KEY_PASSWORD }}
         run: |
-          set -e
-          if [ -n "$SFC_KEYSTORE_B64" ] && [ -n "$SFC_KEY_ALIAS" ] && [ -n "$SFC_KEYSTORE_PASSWORD" ] && [ -n "$SFC_KEY_PASSWORD" ]; then
-            echo "Using configured release signing key."
-            printf '%s' "$SFC_KEYSTORE_B64" | tr -d '\\r\\n ' | base64 --decode > release-source.keystore
-            keytool -list -keystore release-source.keystore -storepass "$SFC_KEYSTORE_PASSWORD" -alias "$SFC_KEY_ALIAS" >/dev/null
-            rm -f release.keystore
-            keytool -importkeystore -noprompt \
-              -srckeystore release-source.keystore \
-              -srcstorepass "$SFC_KEYSTORE_PASSWORD" \
-              -srcalias "$SFC_KEY_ALIAS" \
-              -srckeypass "$SFC_KEY_PASSWORD" \
-              -destkeystore release.keystore \
-              -deststoretype PKCS12 \
-              -deststorepass "$SFC_KEYSTORE_PASSWORD" \
-              -destalias "$SFC_KEY_ALIAS" \
-              -destkeypass "$SFC_KEY_PASSWORD"
-            export SFC_KEYSTORE_PATH="$PWD/release.keystore"
-          else
-            echo "::warning::Release signing secrets are unavailable; generating an ephemeral CI signing key so an installable APK can still be produced."
-            keytool -genkeypair -v -storetype PKCS12 -keystore release.keystore \
-              -alias studentfollowup-ci -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass ci-build-only -keypass ci-build-only \
-              -dname "CN=Blida 2 Student Follow-up CI, OU=Digitalization, O=University of Blida 2, C=DZ"
-            export SFC_KEYSTORE_PATH="$PWD/release.keystore"
-            export SFC_KEY_ALIAS="studentfollowup-ci"
-            export SFC_KEYSTORE_PASSWORD="ci-build-only"
-            export SFC_KEY_PASSWORD="ci-build-only"
+          set -euo pipefail
+          missing=0
+          for name in SFC_KEYSTORE_B64 SFC_KEY_ALIAS SFC_KEYSTORE_PASSWORD SFC_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing production signing secret: $name"
+              missing=1
+            else
+              echo "Secret present: $name"
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Production signing secrets must be configured in the release environment."
+            exit 1
           fi
+
+          printf '%s' "$SFC_KEYSTORE_B64" | tr -d '\\r\\n ' | base64 --decode > release-source.keystore
+          test -s release-source.keystore
+
+          keytool -list -keystore release-source.keystore \
+            -storepass "$SFC_KEYSTORE_PASSWORD" \
+            -alias "$SFC_KEY_ALIAS" >/tmp/keytool-check.txt 2>&1 || {
+              echo "::error::Cannot open the configured keystore with the supplied alias/password."
+              cat /tmp/keytool-check.txt
+              exit 1
+            }
+
+          rm -f release.keystore
+          keytool -importkeystore -noprompt \
+            -srckeystore release-source.keystore \
+            -srcstorepass "$SFC_KEYSTORE_PASSWORD" \
+            -srcalias "$SFC_KEY_ALIAS" \
+            -srckeypass "$SFC_KEY_PASSWORD" \
+            -destkeystore release.keystore \
+            -deststoretype PKCS12 \
+            -deststorepass "$SFC_KEYSTORE_PASSWORD" \
+            -destalias "$SFC_KEY_ALIAS" \
+            -destkeypass "$SFC_KEY_PASSWORD"
+
+          export SFC_KEYSTORE_PATH="$PWD/release.keystore"
           python3 scripts/configure-release-signing.py
+
       - name: Build release APK
         working-directory: android
         run: ./gradlew clean assembleRelease
