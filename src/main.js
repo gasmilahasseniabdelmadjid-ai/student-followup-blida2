@@ -122,7 +122,7 @@ async function makePDF(c){
  const add=async(n,f,st)=>{const r=await fetch('/fonts/'+f);if(!r.ok)throw new Error('font');const b=await r.arrayBuffer();let x='';const a=new Uint8Array(b);for(let i=0;i<a.length;i+=8192)x+=String.fromCharCode(...a.subarray(i,i+8192));d.addFileToVFS(f,x);d.addFont(f,n,st)};
  try{await add('NotoNaskh','NotoNaskhArabic-Regular.ttf','normal');await add('NotoNaskh','NotoNaskhArabic-Bold.ttf','bold')}catch{}
  d.setFont('NotoNaskh');d.setFontSize(12);
- try{const lr=await fetch('/logo.jpg');if(lr.ok){const lb=await lr.blob();const reader=new FileReader();const logo=await new Promise(res=>{reader.onload=()=>res(reader.result);reader.readAsDataURL(lb)});d.addImage(logo,'JPEG',12,6,24,24)}}catch{}
+ try{const lr=await fetch('/logo.png');if(lr.ok){const lb=await lr.blob();const reader=new FileReader();const logo=await new Promise(res=>{reader.onload=()=>res(reader.result);reader.readAsDataURL(lb)});d.addImage(logo,'JPEG',12,6,24,24)}}catch{}
  d.text(U,148,10,{align:'center'});d.setFontSize(10);d.text('كلية العلوم الإنسانية والاجتماعية',148,16,{align:'center'});d.text('قسم علوم الإعلام والاتصال',148,22,{align:'center'});d.setFontSize(11);d.text('بطاقة متابعة الطلبة',148,29,{align:'center'});
  autoTable(d,{startY:34,body:[['المقياس: '+c.course,'المستوى: '+c.level,'التخصص: '+c.specialty],['الفوج: '+c.group,'الأستاذ: '+c.teacher,'السداسي: '+c.semester+' — '+c.year]],theme:'grid',styles:{font:'NotoNaskh',fontSize:7,halign:'right'}});
  const head=[['رقم التسجيل','اللقب والاسم',...c.sessions.map((_,i)=>'ح'+(i+1)),'الغيابات','المواظبة /3','المشاركة /3','العمل /4','الامتحان /10','النهائية /20']];
