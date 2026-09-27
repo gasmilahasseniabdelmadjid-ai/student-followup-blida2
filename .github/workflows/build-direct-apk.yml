@@ -19,12 +19,14 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
-      - name: Download PDF fonts
+      - name: Download PDF fonts and official university logo
         working-directory: .
         run: |
           mkdir -p public/fonts
           curl -L --fail -o public/fonts/NotoNaskhArabic-Regular.ttf https://raw.githubusercontent.com/jenskutilek/free-fonts/master/Noto/Noto%20Naskh%20Arabic/TTF/NotoNaskhArabic-Regular.ttf
           curl -L --fail -o public/fonts/NotoNaskhArabic-Bold.ttf https://raw.githubusercontent.com/jenskutilek/free-fonts/master/Noto/Noto%20Naskh%20Arabic/TTF/NotoNaskhArabic-Bold.ttf
+          curl -L --fail -o public/logo.png 'https://elearning.univ-blida2.dz/pluginfile.php?file=%2F1%2Ftheme_academi%2Flogo%2F1766305366%2Flogo.png'
+          file public/logo.png
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Validate
@@ -95,7 +97,7 @@ jobs:
           sha256sum android/app/build/outputs/apk/release/app-release.apk | tee SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: student-followup-blida2-v3.0.0-apk
+          name: student-followup-blida2-v3.1.0-apk
           path: |
             android/app/build/outputs/apk/release/app-release.apk
             SHA256SUMS.txt
