@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: release
     permissions:
       contents: read
     steps:
@@ -56,7 +55,7 @@ jobs:
             fi
           done
           if [ "$missing" -ne 0 ]; then
-            echo "::error::Production signing secrets must be configured in the release environment."
+            echo "::error::Production signing secrets must be configured as repository Actions secrets."
             exit 1
           fi
 
