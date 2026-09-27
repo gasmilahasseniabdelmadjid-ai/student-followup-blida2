@@ -14,3 +14,5 @@
 لا ترسل قيم الأسرار داخل المحادثة.
 
 بعد ذلك افتح **Actions → Build Direct APK → Run workflow**.
+
+<!-- CI build pipeline updated -->
