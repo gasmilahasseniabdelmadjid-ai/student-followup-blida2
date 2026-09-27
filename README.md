@@ -18,3 +18,5 @@
 <!-- CI build pipeline updated -->
 
 <!-- Production signing verification trigger: 2026-09-27 -->
+
+<!-- Repository secrets verification: 2026-09-27 -->
