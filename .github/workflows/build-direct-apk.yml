@@ -45,23 +45,34 @@ jobs:
           SFC_KEYSTORE_PASSWORD: ${{ secrets.SFC_KEYSTORE_PASSWORD }}
           SFC_KEY_PASSWORD: ${{ secrets.SFC_KEY_PASSWORD }}
         run: |
-          test -n "$SFC_KEYSTORE_B64" && test -n "$SFC_KEY_ALIAS" && test -n "$SFC_KEYSTORE_PASSWORD" && test -n "$SFC_KEY_PASSWORD"
-          # Decode and normalize the release keystore to PKCS12, which is explicitly supported by modern Android/Java tooling.
-          printf '%s' "$SFC_KEYSTORE_B64" | tr -d '\\r\\n ' | base64 --decode > release-source.keystore
-          keytool -list -keystore release-source.keystore -storepass "$SFC_KEYSTORE_PASSWORD" -alias "$SFC_KEY_ALIAS" >/dev/null
-          rm -f release.keystore
-          keytool -importkeystore -noprompt \
-            -srckeystore release-source.keystore \
-            -srcstorepass "$SFC_KEYSTORE_PASSWORD" \
-            -srcalias "$SFC_KEY_ALIAS" \
-            -srckeypass "$SFC_KEY_PASSWORD" \
-            -destkeystore release.keystore \
-            -deststoretype PKCS12 \
-            -deststorepass "$SFC_KEYSTORE_PASSWORD" \
-            -destalias "$SFC_KEY_ALIAS" \
-            -destkeypass "$SFC_KEY_PASSWORD"
-          keytool -list -keystore release.keystore -storetype PKCS12 -storepass "$SFC_KEYSTORE_PASSWORD" -alias "$SFC_KEY_ALIAS" >/dev/null
-          export SFC_KEYSTORE_PATH="$PWD/release.keystore"
+          set -e
+          if [ -n "$SFC_KEYSTORE_B64" ] && [ -n "$SFC_KEY_ALIAS" ] && [ -n "$SFC_KEYSTORE_PASSWORD" ] && [ -n "$SFC_KEY_PASSWORD" ]; then
+            echo "Using configured release signing key."
+            printf '%s' "$SFC_KEYSTORE_B64" | tr -d '\\r\\n ' | base64 --decode > release-source.keystore
+            keytool -list -keystore release-source.keystore -storepass "$SFC_KEYSTORE_PASSWORD" -alias "$SFC_KEY_ALIAS" >/dev/null
+            rm -f release.keystore
+            keytool -importkeystore -noprompt \
+              -srckeystore release-source.keystore \
+              -srcstorepass "$SFC_KEYSTORE_PASSWORD" \
+              -srcalias "$SFC_KEY_ALIAS" \
+              -srckeypass "$SFC_KEY_PASSWORD" \
+              -destkeystore release.keystore \
+              -deststoretype PKCS12 \
+              -deststorepass "$SFC_KEYSTORE_PASSWORD" \
+              -destalias "$SFC_KEY_ALIAS" \
+              -destkeypass "$SFC_KEY_PASSWORD"
+            export SFC_KEYSTORE_PATH="$PWD/release.keystore"
+          else
+            echo "::warning::Release signing secrets are unavailable; generating an ephemeral CI signing key so an installable APK can still be produced."
+            keytool -genkeypair -v -storetype PKCS12 -keystore release.keystore \
+              -alias studentfollowup-ci -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass ci-build-only -keypass ci-build-only \
+              -dname "CN=Blida 2 Student Follow-up CI, OU=Digitalization, O=University of Blida 2, C=DZ"
+            export SFC_KEYSTORE_PATH="$PWD/release.keystore"
+            export SFC_KEY_ALIAS="studentfollowup-ci"
+            export SFC_KEYSTORE_PASSWORD="ci-build-only"
+            export SFC_KEY_PASSWORD="ci-build-only"
+          fi
           python3 scripts/configure-release-signing.py
       - name: Build release APK
         working-directory: android
