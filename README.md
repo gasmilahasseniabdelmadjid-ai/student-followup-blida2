@@ -16,3 +16,5 @@
 بعد ذلك افتح **Actions → Build Direct APK → Run workflow**.
 
 <!-- CI build pipeline updated -->
+
+<!-- Production signing verification trigger: 2026-09-27 -->
