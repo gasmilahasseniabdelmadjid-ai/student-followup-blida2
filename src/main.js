@@ -6,6 +6,7 @@ import {Capacitor} from '@capacitor/core';
 import {Filesystem,Directory} from '@capacitor/filesystem';
 import {Share} from '@capacitor/share';
 import {CapacitorNfc} from '@capgo/capacitor-nfc';
+import {FilePicker} from '@capawesome/capacitor-file-picker';
 
 const U='جامعة البليدة 2 لونيسي علي', KEY='student_followup_v3', VERSION='3.3.1';
 const I=()=>({id:crypto.randomUUID(),course:'',level:'',department:'',specialty:'',group:'',teacher:'',semester:'',year:'2026/2027',session:0,sessions:Array.from({length:14},()=>''),students:[]});
@@ -51,7 +52,17 @@ function wire(c){
  document.querySelector('#new2').onclick=newCard; document.querySelector('#myCards').onclick=()=>showCards();
  document.querySelector('#add').onclick=()=>{c.students.push({reg:'',name:'',attendance:Array(14).fill(''),conduct:'',part:'',work:'',exam:'',nfc:''});save();render()};
  const picker=document.querySelector('#pickExcel'), input=document.querySelector('#excel');
- picker.onclick=()=>input.click();
+ picker.onclick=async()=>{
+  if(Capacitor.getPlatform()==='web'){input.click();return}
+  try{
+   const result=await FilePicker.pickFiles({types:['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-excel','text/csv','application/octet-stream'],limit:1});
+   const file=result.files?.[0]; if(!file)return;
+   let blob=file.blob;
+   if(!blob&&file.webPath){const response=await fetch(file.webPath);if(!response.ok)throw new Error('تعذر قراءة الملف المحدد');blob=await response.blob()}
+   if(!blob)throw new Error('تعذر الوصول إلى محتوى ملف Excel');
+   await importExcelBlob(blob,c,file.name||'Excel.xlsx');
+  }catch(err){if(err?.message&&/cancel|dismiss|canceled|cancelled/i.test(err.message))return;alert('تعذر اختيار ملف Excel: '+(err?.message||err))}
+ };
  input.onchange=e=>importExcel(e,c);
  document.querySelector('#pdf').onclick=()=>{bind(c);makePDF(c)};
  document.querySelector('#session').onchange=e=>{c.session=+e.target.value;save();render()};
@@ -62,6 +73,7 @@ function wire(c){
  document.querySelector('#link').onclick=()=>nfc(c,'link');
 }
 function bind(c){['department','course','level','specialty','group','teacher','semester','year'].forEach(k=>{c[k]=document.querySelector('#'+k).value});save()}
+async function importExcelBlob(blob,c,name='Excel.xlsx'){ const file=new File([blob],name,{type:blob.type||'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); await importExcel({target:{files:[file],value:name}},c); }
 async function importExcel(e,c){
  const f=e.target.files?.[0]; if(!f)return;
  try{
