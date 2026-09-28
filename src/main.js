@@ -1,24 +1,38 @@
 import './style.css';
 import * as XLSX from 'xlsx';
-import {jsPDF} from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import {Capacitor} from '@capacitor/core';
 import {Filesystem,Directory} from '@capacitor/filesystem';
 import {Share} from '@capacitor/share';
 import {CapacitorNfc} from '@capgo/capacitor-nfc';
 import {FilePicker} from '@capawesome/capacitor-file-picker';
-import {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,WidthType,AlignmentType} from 'docx';
+import {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,WidthType,AlignmentType,ImageRun} from 'docx';
+import JsBarcode from 'jsbarcode';
 
-const U='جامعة البليدة 2 لونيسي علي', UNI={ar:'جامعة البليدة 2 لونيسي علي',fr:'Université de Blida 2 Lounici Ali',en:'University of Blida 2 Lounici Ali'}, KEY='student_followup_v3', VERSION='3.5.1';
+const U='جامعة البليدة 2 لونيسي علي', UNI={ar:'جامعة البليدة 2 لونيسي علي',fr:'Université de Blida 2 Lounici Ali',en:'University of Blida 2 Lounici Ali'}, KEY='student_followup_v3', VERSION='3.6.0';
 const I=()=>({id:crypto.randomUUID(),course:'',level:'',department:'',specialty:'',group:'',teacher:'',semester:'',year:'2026/2027',session:0,sessions:Array.from({length:14},()=>''),students:[]});
 let data=load(),lang=localStorage.getItem('sfc_lang')||'ar',nfcListener=null,nfcMode='attendance';
-const T={ar:{title:'بطاقة متابعة الطلبة',new:'بطاقة جديدة',import:'استيراد Excel',pdf:'تصدير PDF',word:'تصدير Word',archive:'تصدير أرشيف',deleteAll:'حذف جميع البيانات',save:'حفظ',students:'الطلبة',add:'إضافة طالب',scan:'مسح NFC',course:'المقياس',level:'المستوى',dept:'القسم',spec:'التخصص',group:'الفوج',teacher:'الأستاذ',sem:'السداسي',year:'الموسم الجامعي',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'الغيابات',conduct:'المواظبة /3',part:'المشاركة /3',work:'العمل الشخصي /4',exam:'الامتحان /10',final:'النهائية /20',session:'الحصة الحالية',link:'ربط البطاقة',choose:'اختر طالباً',present:'تم تسجيل الحضور',unknown:'البطاقة غير مرتبطة',unsupported:'NFC غير مدعوم',disabled:'NFC غير مفعّل'},fr:{title:'Fiche de suivi des étudiants',new:'Nouvelle fiche',importer:'Importer Excel',import:'Importer Excel',pdf:'Exporter PDF',word:'Exporter Word',archive:'Exporter archive',deleteAll:'Supprimer toutes les données',save:'Enregistrer',students:'Étudiants',add:'Ajouter',scan:'Scanner NFC',course:'Module',level:'Niveau',dept:'Département',spec:'Spécialité',group:'Groupe',teacher:'Enseignant',sem:'Semestre',year:'Année universitaire',reg:'Matricule',name:'Nom et prénom',abs:'Absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail /4',exam:'Examen /10',final:'Finale /20',session:'Séance',link:'Associer',choose:'Choisir',present:'Présence enregistrée',unknown:'Carte non associée',unsupported:'NFC non pris en charge',disabled:'NFC désactivé'},en:{title:'Student Follow-up Card',new:'New card',import:'Import Excel',pdf:'Export PDF',word:'Export Word',archive:'Export archive',deleteAll:'Delete all data',save:'Save',students:'Students',add:'Add student',scan:'Scan NFC',course:'Course',level:'Level',dept:'Department',spec:'Specialty',group:'Group',teacher:'Teacher',sem:'Semester',year:'Academic year',reg:'Registration No.',name:'Name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Exam /10',final:'Final /20',session:'Session',link:'Link card',choose:'Select student',present:'Attendance recorded',unknown:'Card not linked',unsupported:'NFC unsupported',disabled:'NFC disabled'}};
+const T={ar:{title:'بطاقة متابعة الطلبة',new:'بطاقة جديدة',import:'استيراد Excel',word:'تصدير Word',archive:'تصدير أرشيف',deleteAll:'حذف جميع البيانات',save:'حفظ',students:'الطلبة',add:'إضافة طالب',scan:'مسح NFC',course:'المقياس',level:'المستوى',dept:'القسم',spec:'التخصص',group:'الفوج',teacher:'الأستاذ',sem:'السداسي',year:'الموسم الجامعي',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'الغيابات',conduct:'المواظبة /3',part:'المشاركة /3',work:'العمل الشخصي /4',exam:'الامتحان /10',final:'النهائية /20',session:'الحصة الحالية',link:'ربط البطاقة',choose:'اختر طالباً',present:'تم تسجيل الحضور',unknown:'البطاقة غير مرتبطة',unsupported:'NFC غير مدعوم',disabled:'NFC غير مفعّل'},fr:{title:'Fiche de suivi des étudiants',new:'Nouvelle fiche',importer:'Importer Excel',import:'Importer Excel',word:'Exporter Word',archive:'Exporter archive',deleteAll:'Supprimer toutes les données',save:'Enregistrer',students:'Étudiants',add:'Ajouter',scan:'Scanner NFC',course:'Module',level:'Niveau',dept:'Département',spec:'Spécialité',group:'Groupe',teacher:'Enseignant',sem:'Semestre',year:'Année universitaire',reg:'Matricule',name:'Nom et prénom',abs:'Absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail /4',exam:'Examen /10',final:'Finale /20',session:'Séance',link:'Associer',choose:'Choisir',present:'Présence enregistrée',unknown:'Carte non associée',unsupported:'NFC non pris en charge',disabled:'NFC désactivé'},en:{title:'Student Follow-up Card',new:'New card',import:'Import Excel',word:'Export Word',archive:'Export archive',deleteAll:'Delete all data',save:'Save',students:'Students',add:'Add student',scan:'Scan NFC',course:'Course',level:'Level',dept:'Department',spec:'Specialty',group:'Group',teacher:'Teacher',sem:'Semester',year:'Academic year',reg:'Registration No.',name:'Name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Exam /10',final:'Final /20',session:'Session',link:'Link card',choose:'Select student',present:'Attendance recorded',unknown:'Card not linked',unsupported:'NFC unsupported',disabled:'NFC disabled'}};
 const tr=k=>T[lang][k]||T.en[k]||k;
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||{cards:[],active:null}}catch{return{cards:[],active:null}}}
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
 function card(){return data.cards.find(x=>x.id===data.active)}
 function esc(x=''){return String(x).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function total(s){return Math.min(20,(+s.conduct||0)+(+s.part||0)+(+s.work||0)+(+s.exam||0))}
+function hasArabic(x=''){return /[\u0600-\u06FF]/.test(String(x))}
+function displayName(st){
+ const ar=String(st.nameAr||[st.lastAr,st.firstAr].filter(Boolean).join(' / ')||'').trim();
+ const lat=String(st.nameLat||[st.lastLat,st.firstLat].filter(Boolean).join(' / ')||'').trim();
+ return lang==='ar' ? ar : lat;
+}
+function cardBarcodeValue(c){return 'B2-'+String(c.id||'').replace(/-/g,'').slice(0,18).toUpperCase()}
+async function blobBytes(blob){return new Uint8Array(await blob.arrayBuffer())}
+async function fetchAssetBytes(path){const r=await fetch(path);if(!r.ok)throw new Error('asset');return new Uint8Array(await r.arrayBuffer())}
+async function barcodePngBytes(value){
+ const canvas=document.createElement('canvas');
+ JsBarcode(canvas,value,{format:'CODE128',displayValue:true,font:'Arial',fontSize:12,height:46,width:2,margin:6,textMargin:3});
+ const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('barcode')), 'image/png'));
+ return blobBytes(blob);
+}
 function newCard(){const c=I();data.cards.unshift(c);data.active=c.id;save();render()}
 function render(){
  document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';
@@ -40,13 +54,13 @@ function welcome(){return`<section class="welcome"><h1>${tr('title')}</h1><p>${U
 function editor(c){
  const present=c.students.filter(s=>s.attendance?.[c.session]==='P').length;
  return `<section class="stats"><div><b>${c.students.length}</b><span>${tr('students')}</span></div><div><b>${c.students.filter(s=>s.nfc).length}</b><span>NFC</span></div><div><b>${present}</b><span>${tr('present')}</span></div><div><b>${c.students.filter(s=>s.attendance?.[c.session]==='A').length}</b><span>${tr('abs')}</span></div><div><b>${c.students.filter(s=>s.attendance?.[c.session]==='E').length}</b><span>م</span></div></section>
- <section class="cardsbar"><button id="new2" class="card-action primary">＋ ${tr('new')}</button><button id="myCards" class="card-action secondary">📚 ${lang==='ar'?'بطاقاتي':lang==='fr'?'Mes fiches':'My cards'}</button><span class="active-card-name">${esc([c.course,c.specialty,c.group].filter(Boolean).join(' — ')||tr('new'))}</span></section><section class="toolbar"><button id="save">${tr('save')}</button><button id="pickExcel">📥 ${tr('import')}</button><input id="excel" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none"><button id="pdf">${tr('pdf')}</button><button id="word">📝 ${tr('word')}</button><button id="archive">🗃️ ${tr('archive')}</button><button id="deleteAll" class="danger">🗑️ ${tr('deleteAll')}</button><button id="scan">📡 ${tr('scan')}</button><button id="link">${tr('link')}</button></section>
+ <section class="cardsbar"><button id="new2" class="card-action primary">＋ ${tr('new')}</button><button id="myCards" class="card-action secondary">📚 ${lang==='ar'?'بطاقاتي':lang==='fr'?'Mes fiches':'My cards'}</button><span class="active-card-name">${esc([c.course,c.specialty,c.group].filter(Boolean).join(' — ')||tr('new'))}</span></section><section class="toolbar"><button id="save">${tr('save')}</button><button id="pickExcel">📥 ${tr('import')}</button><input id="excel" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none"><button id="word">📝 ${tr('word')}</button><button id="archive">🗃️ ${tr('archive')}</button><button id="deleteAll" class="danger">🗑️ ${tr('deleteAll')}</button><button id="scan">📡 ${tr('scan')}</button><button id="link">${tr('link')}</button></section>
  <section class="cardform"><div class="fields">${field('department',tr('dept'),c.department)}${field('course',tr('course'),c.course)}${field('level',tr('level'),c.level)}${field('specialty',tr('spec'),c.specialty)}${field('group',tr('group'),c.group)}${field('teacher',tr('teacher'),c.teacher)}${field('semester',tr('sem'),c.semester)}${field('year',tr('year'),c.year)}</div></section>
  <section class="sessions"><b>${tr('session')}</b><select id="session" class="current-session">${c.sessions.map((d,i)=>`<option value="${i}" ${c.session===i?'selected':''}>ح${i+1} ${d||''}</option>`).join('')}</select><div class="sessiongrid">${c.sessions.map((d,i)=>`<label>ح${i+1}<input data-date="${i}" type="date" value="${d}"></label>`).join('')}</div></section>
  <section class="tablewrap"><button id="add">＋ ${tr('add')}</button><table><thead><tr><th>${tr('reg')}</th><th>${tr('name')}</th>${c.sessions.map((_,i)=>`<th>ح${i+1}</th>`).join('')}<th>${tr('abs')}</th><th>${tr('conduct')}</th><th>${tr('part')}</th><th>${tr('work')}</th><th>${tr('exam')}</th><th>${tr('final')}</th><th>NFC</th><th></th></tr></thead><tbody>${c.students.map((st,i)=>row(st,i,c)).join('')}</tbody></table></section>`;
 }
 function field(id,l,v){return`<label>${l}<input id="${id}" value="${esc(v)}"></label>`}
-function row(s,i,c){return`<tr><td><input data-s="${i}" data-k="reg" value="${esc(s.reg)}"></td><td><input data-s="${i}" data-k="name" value="${esc(s.name)}"></td>${c.sessions.map((_,j)=>`<td><select data-s="${i}" data-a="${j}"><option value="">—</option><option ${s.attendance?.[j]==='P'?'selected':''} value="P">✓</option><option ${s.attendance?.[j]==='A'?'selected':''} value="A">غ</option><option ${s.attendance?.[j]==='E'?'selected':''} value="E">م</option></select></td>`).join('')}<td>${s.attendance?.filter(x=>x==='A').length||0}</td><td><input data-s="${i}" data-k="conduct" type="number" max="3" value="${s.conduct||''}"></td><td><input data-s="${i}" data-k="part" type="number" max="3" value="${s.part||''}"></td><td><input data-s="${i}" data-k="work" type="number" max="4" value="${s.work||''}"></td><td><input data-s="${i}" data-k="exam" type="number" max="10" value="${s.exam||''}"></td><td data-total>${total(s).toFixed(2)}</td><td>${s.nfc?'✓':'—'}</td><td><button class="danger" data-del="${i}">×</button></td></tr>`}
+function row(s,i,c){return`<tr><td><input data-s="${i}" data-k="reg" value="${esc(s.reg)}"></td><td><input data-s="${i}" data-k="name" value="${esc(displayName(s))}"></td>${c.sessions.map((_,j)=>`<td><select data-s="${i}" data-a="${j}"><option value="">—</option><option ${s.attendance?.[j]==='P'?'selected':''} value="P">✓</option><option ${s.attendance?.[j]==='A'?'selected':''} value="A">غ</option><option ${s.attendance?.[j]==='E'?'selected':''} value="E">م</option></select></td>`).join('')}<td>${s.attendance?.filter(x=>x==='A').length||0}</td><td><input data-s="${i}" data-k="conduct" type="number" max="3" value="${s.conduct||''}"></td><td><input data-s="${i}" data-k="part" type="number" max="3" value="${s.part||''}"></td><td><input data-s="${i}" data-k="work" type="number" max="4" value="${s.work||''}"></td><td><input data-s="${i}" data-k="exam" type="number" max="10" value="${s.exam||''}"></td><td data-total>${total(s).toFixed(2)}</td><td>${s.nfc?'✓':'—'}</td><td><button class="danger" data-del="${i}">×</button></td></tr>`}
 function wire(c){
  document.querySelector('#save').onclick=()=>{bind(c);toast(tr('save'))};
  const cardSelect=document.querySelector('#cardSelect'); if(cardSelect) cardSelect.onchange=e=>{bind(c);data.active=e.target.value;save();render()};
@@ -65,13 +79,12 @@ function wire(c){
   }catch(err){if(err?.message&&/cancel|dismiss|canceled|cancelled/i.test(err.message))return;alert('تعذر اختيار ملف Excel: '+(err?.message||err))}
  };
  input.onchange=e=>importExcel(e,c);
- document.querySelector('#pdf').onclick=()=>{bind(c);makePDF(c)};
  document.querySelector('#word').onclick=()=>{bind(c);makeWord(c)};
  document.querySelector('#archive').onclick=()=>exportArchive();
  document.querySelector('#deleteAll').onclick=()=>deleteAllData();
  document.querySelector('#session').onchange=e=>{c.session=+e.target.value;save();render()};
  document.querySelectorAll('[data-date]').forEach(e=>e.onchange=()=>{c.sessions[+e.dataset.date]=e.value;save()});
- document.querySelectorAll('[data-s]').forEach(e=>e.oninput=()=>{const st=c.students[+e.dataset.s];if(e.dataset.a!==undefined)st.attendance[+e.dataset.a]=e.value;else st[e.dataset.k]=e.value;save();if(e.dataset.k) { const trEl=e.closest('tr'); if(trEl&&['conduct','part','work','exam'].includes(e.dataset.k)){const out=trEl.querySelector('[data-total]');if(out)out.textContent=total(st).toFixed(2)}}});
+ document.querySelectorAll('[data-s]').forEach(e=>e.oninput=()=>{const st=c.students[+e.dataset.s];if(e.dataset.a!==undefined)st.attendance[+e.dataset.a]=e.value;else if(e.dataset.k==='name'){st.name=e.value;if(lang==='ar')st.nameAr=e.value;else st.nameLat=e.value}else st[e.dataset.k]=e.value;save();if(e.dataset.k) { const trEl=e.closest('tr'); if(trEl&&['conduct','part','work','exam'].includes(e.dataset.k)){const out=trEl.querySelector('[data-total]');if(out)out.textContent=total(st).toFixed(2)}}});
  document.querySelectorAll('[data-del]').forEach(e=>e.onclick=()=>{c.students.splice(+e.dataset.del,1);save();render()});
  document.querySelector('#scan').onclick=()=>nfc(c,'attendance');
  document.querySelector('#link').onclick=()=>nfc(c,'link');
@@ -102,6 +115,12 @@ async function importExcel(e,c){
    name:['اللقبوالاسم','nomprenom','nometprenom','name','fullname','studentname'],
    last:['اللقب','nom','lastname','surname'],
    first:['الاسم','prenom','firstname'],
+   nameAr:['الاسمبالعربية','الاسمبالعربي','nomprenomarabe','nometprenomarabe','arabicname','arabicfullname'],
+   lastAr:['اللقببالعربية','اللقببالعربي','nomarabe','arabiclastname'],
+   firstAr:['الاسمالعربيه','الاسمبالعربي','prenomarabe','arabicfirstname'],
+   nameLat:['الاسمواللقبباللاتينية','الاسمواللقبباللاتينيه','nomprenomlatin','nometprenomlatin','latinname','latinfullname','nameen','namefr'],
+   lastLat:['اللقبباللاتينية','اللقبباللاتينيه','nomlatin','latinlastname'],
+   firstLat:['الاسماللاتيني','الاسمباللاتينية','prenomlatin','latinfirstname'],
    note:['note','mark','grade','العلامة','النقطة'],
    absent:['absent','absence','غياب','غائب'],
    justified:['absencejustifiee','absencedjustifiee','absjustifiee','absencejustified','غيابمبرر'],
@@ -137,7 +156,11 @@ async function importExcel(e,c){
    let last=value(r,'last');
    let first=value(r,'first');
    let name=value(r,'name');
+   let nameAr=value(r,'nameAr')||[value(r,'lastAr'),value(r,'firstAr')].filter(Boolean).join(' / ');
+   let nameLat=value(r,'nameLat')||[value(r,'lastLat'),value(r,'firstLat')].filter(Boolean).join(' / ');
    if(!name)name=[last,first].filter(Boolean).join(' / ');
+   if(!nameAr&&hasArabic(name))nameAr=name;
+   if(!nameLat&&name&&!hasArabic(name))nameLat=name;
    const uid=value(r,'nfc').toUpperCase().replace(/[^0-9A-F]/g,'');
    if(isUniversityTemplate){
      const cells=Object.values(r).map(v=>String(v??'').trim());
@@ -156,11 +179,11 @@ async function importExcel(e,c){
 
    let st=c.students.find(x=>reg&&String(x.reg).trim()===reg)||c.students.find(x=>name&&String(x.name).trim()===name);
    if(!st){
-     st={reg,name,last,first,group,level,specialty:spec,section,note,absent,justified,observation,
+     st={reg,name,nameAr,nameLat,last,first,lastAr:value(r,'lastAr'),firstAr:value(r,'firstAr'),lastLat:value(r,'lastLat')||last,firstLat:value(r,'firstLat')||first,group,level,specialty:spec,section,note,absent,justified,observation,
        attendance:Array(14).fill(''),conduct:'',part:'',work:'',exam:'',nfc:uid};
      c.students.push(st);added++;
    }else{
-     st.name=name||st.name; if(last)st.last=last; if(first)st.first=first; if(reg)st.reg=reg; if(uid)st.nfc=uid;
+     st.name=name||st.name; if(nameAr)st.nameAr=nameAr; if(nameLat)st.nameLat=nameLat; if(last)st.last=last; if(first)st.first=first; if(nameAr)st.lastAr=value(r,'lastAr')||st.lastAr; if(nameAr)st.firstAr=value(r,'firstAr')||st.firstAr; if(nameLat)st.lastLat=value(r,'lastLat')||st.lastLat; if(nameLat)st.firstLat=value(r,'firstLat')||st.firstLat; if(reg)st.reg=reg; if(uid)st.nfc=uid;
      if(group)st.group=group;if(level)st.level=level;if(spec)st.specialty=spec;
      if(section)st.section=section;if(note)st.note=note;if(absent)st.absent=absent;
      if(justified)st.justified=justified;if(observation)st.observation=observation;
@@ -176,7 +199,7 @@ async function importExcel(e,c){
 }
 async function nfc(c,mode){
  const modal=document.createElement('div');modal.className='modal';
- modal.innerHTML=`<div class="modal-card"><h2>📡 NFC</h2><p>${mode==='link'?tr('link'):tr('scan')}</p>${mode==='link'?'<select id="nfcStudent">'+c.students.map((st,i)=>`<option value="${i}">${esc(st.reg)} — ${esc(st.name)}</option>`).join('')+'</select>':''}<div class="status" id="nfcStatus">جاري فحص دعم NFC…</div><button id="settings" style="display:none">⚙️ إعدادات NFC</button> <button id="close">إغلاق</button></div>`;
+ modal.innerHTML=`<div class="modal-card"><h2>📡 NFC</h2><p>${mode==='link'?tr('link'):tr('scan')}</p>${mode==='link'?'<select id="nfcStudent">'+c.students.map((st,i)=>`<option value="${i}">${esc(st.reg)} — ${esc(displayName(st))}</option>`).join('')+'</select>':''}<div class="status" id="nfcStatus">جاري فحص دعم NFC…</div><button id="settings" style="display:none">⚙️ إعدادات NFC</button> <button id="close">إغلاق</button></div>`;
  document.body.appendChild(modal);
  modal.querySelector('#close').onclick=()=>stopNfc(modal);
  modal.querySelector('#settings').onclick=()=>CapacitorNfc.showSettings().catch(()=>{});
@@ -209,63 +232,30 @@ async function deliverFile(blob,filename,mime){
  const base64=await blobToBase64(blob);const saved=await Filesystem.writeFile({path:filename,data:base64,directory:Directory.Cache});await Share.share({title:filename,url:saved.uri});
 }
 async function makeWord(c){
- const L={ar:{title:'بطاقة متابعة الطلبة',faculty:'كلية العلوم الإنسانية والاجتماعية',dept:'قسم علم الاجتماع وعلم السكان',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'الغيابات',conduct:'المواظبة /3',part:'المشاركة /3',work:'العمل الشخصي /4',exam:'الامتحان /10',finale:'النهائية /20',course:'المقياس',level:'المستوى',department:'القسم',specialty:'التخصص',group:'الفوج',teacher:'الأستاذ',semester:'السداسي',year:'الموسم الجامعي'},
- fr:{title:'Fiche de suivi des étudiants',faculty:'Faculté des sciences humaines et sociales',dept:'Département de sociologie et de démographie',reg:'Matricule',name:'Nom et prénom',abs:'Absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail /4',exam:'Examen /10',finale:'Finale /20',course:'Module',level:'Niveau',department:'Département',specialty:'Spécialité',group:'Groupe',teacher:'Enseignant',semester:'Semestre',year:'Année universitaire'},
- en:{title:'Student Follow-up Card',faculty:'Faculty of Humanities and Social Sciences',dept:'Department of Sociology and Demography',reg:'Registration No.',name:'Student name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Exam /10',finale:'Final /20',course:'Course',level:'Level',department:'Department',specialty:'Specialty',group:'Group',teacher:'Teacher',semester:'Semester',year:'Academic year'}}[lang];
- const p=v=>new Paragraph({children:[new TextRun({text:String(v??'—'),font:'Arial',size:18})],bidirectional:lang==='ar',alignment:lang==='ar'?AlignmentType.RIGHT:AlignmentType.LEFT});
- const cell=v=>new TableCell({children:[p(v)],width:{size:1000,type:WidthType.DXA}});
+ const L={ar:{title:'بطاقة متابعة الطلبة',faculty:'كلية العلوم الإنسانية والاجتماعية',dept:'قسم علم الاجتماع وعلم السكان',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'عدد الغيابات',conduct:'علامة المواظبة والسلوك /3',part:'علامة المشاركة /3',work:'علامة العمل الشخصي /4',exam:'علامة الامتحان /10',finale:'العالمة النهائية /20',course:'المقياس',level:'المستوى',department:'القسم',specialty:'التخصص',group:'الفوج',teacher:'الأستاذ',semester:'السداسي',year:'الموسم الجامعي',sessions:'تاريخ الحصص'},fr:{title:'Fiche de suivi des étudiants',faculty:'Faculté des sciences humaines et sociales',dept:'Département de sociologie et de démographie',reg:'Matricule',name:'Nom et prénom',abs:'Nombre d’absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail personnel /4',exam:'Évaluation /10',finale:'Note finale /20',course:'Module',level:'Niveau',department:'Département',specialty:'Spécialité',group:'Groupe',teacher:'Enseignant',semester:'Semestre',year:'Année universitaire',sessions:'Dates des séances'},en:{title:'Student Follow-up Card',faculty:'Faculty of Humanities and Social Sciences',dept:'Department of Sociology and Demography',reg:'Registration No.',name:'Student name',abs:'Number of absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Assessment /10',finale:'Final grade /20',course:'Course',level:'Level',department:'Department',specialty:'Specialty',group:'Group',teacher:'Teacher',semester:'Semester',year:'Academic year',sessions:'Session dates'}}[lang];
+ const rtl=lang==='ar', logo=await fetchAssetBytes('/university-logo.jpg'), barcode=await barcodePngBytes(cardBarcodeValue(c));
+ const run=(v,o={})=>new TextRun({text:String(v??'—'),font:'Arial',size:o.size||18,bold:!!o.bold,rtl});
+ const para=(v,o={})=>new Paragraph({children:[run(v,o)],alignment:o.align||(rtl?AlignmentType.RIGHT:AlignmentType.LEFT),bidirectional:rtl,spacing:{after:0,before:0}});
+ const imgPara=(im,a=AlignmentType.CENTER)=>new Paragraph({children:[im],alignment:a,spacing:{after:0,before:0}});
+ const cell=(v,w=900,o={})=>new TableCell({width:{size:w,type:WidthType.DXA},children:[para(v,{bold:!!o.bold,size:o.size||11,align:rtl?AlignmentType.RIGHT:AlignmentType.LEFT})]});
  const meta=[[L.course,c.course,L.level,c.level],[L.department,c.department,L.specialty,c.specialty],[L.group,c.group,L.teacher,c.teacher],[L.semester,c.semester,L.year,c.year]];
- const metaTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:meta.map(r=>new TableRow({children:r.map(cell)}))});
- const headers=[L.reg,L.name,...c.sessions.map((_,i)=>lang==='ar'?'ح'+(i+1):'S'+(i+1)),L.abs,L.conduct,L.part,L.work,L.exam,L.finale];
- const rows=[new TableRow({children:headers.map(v=>cell(v))})];
- for(const st of c.students){const vals=[st.reg,st.name||[st.last,st.first].filter(Boolean).join(' / '),...c.sessions.map((_,i)=>st.attendance?.[i]==='P'?'✓':st.attendance?.[i]==='A'?(lang==='ar'?'غ':'A'):st.attendance?.[i]==='E'?(lang==='ar'?'م':'E'):''),st.attendance?.filter(x=>x==='A').length||0,st.conduct||'',st.part||'',st.work||'',st.exam||'',total(st).toFixed(2)];rows.push(new TableRow({children:vals.map(cell)}))}
- const doc=new Document({sections:[{properties:{page:{size:{width:16838,height:11906,orientation:'landscape'},margin:{top:500,right:500,bottom:500,left:500}}},children:[
- new Paragraph({children:[new TextRun({text:UNI[lang],bold:true,size:28})],alignment:AlignmentType.CENTER,bidirectional:lang==='ar'}),
- new Paragraph({children:[new TextRun({text:L.faculty,size:20})],alignment:AlignmentType.CENTER,bidirectional:lang==='ar'}),
- new Paragraph({children:[new TextRun({text:L.dept,size:20})],alignment:AlignmentType.CENTER,bidirectional:lang==='ar'}),
- new Paragraph({children:[new TextRun({text:L.title,bold:true,size:26})],alignment:AlignmentType.CENTER,bidirectional:lang==='ar'}),
- metaTable,new Paragraph({text:''}),new Table({width:{size:100,type:WidthType.PERCENTAGE},rows})
- ]}]});
- const blob=await Packer.toBlob(doc);const safe=(c.course||'student-follow-up').replace(/[\\/:*?"<>|]/g,'-').slice(0,80);const filename=(lang==='ar'?'بطاقة-متابعة-':lang==='fr'?'Fiche-suivi-':'Student-Follow-Up-')+safe+'.docx';await deliverFile(blob,filename,'application/vnd.openxmlformats-officedocument.wordprocessingml.document');toast(tr('word'));
+ const metaTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:meta.map(a=>new TableRow({children:(rtl?[...a].reverse():a).map((v,i)=>cell(v,i%2===0?1500:2900,{bold:i%2===0,size:11}))})),columnWidths:[1500,2900,1500,2900]});
+ const headers=[L.reg,L.name,...c.sessions.map((_,i)=>rtl?'ح'+(i+1):'S'+(i+1)),L.abs,L.conduct,L.part,L.work,L.exam,L.finale];
+ const dates=['','',...c.sessions.map(d=>d||''),'','','','','','',''];
+ const makeRow=a=>new TableRow({children:(rtl?[...a].reverse():a).map((v,i)=>cell(v,i===0?1400:(i===1?3000:760),{bold:true,size:9}))});
+ const rows=[makeRow(headers),makeRow(dates)];
+ for(const st of c.students){const vals=[st.reg,displayName(st),...c.sessions.map((_,i)=>st.attendance?.[i]==='P'?'✓':st.attendance?.[i]==='A'?(rtl?'غ':'A'):st.attendance?.[i]==='E'?(rtl?'م':'E'):''),st.attendance?.filter(x=>x==='A').length||0,st.conduct||'',st.part||'',st.work||'',st.exam||'',total(st).toFixed(2)];rows.push(new TableRow({children:(rtl?[...vals].reverse():vals).map((v,i)=>cell(v,i===0?1400:(i===1?3000:760),{size:9}))}));}
+ const studentTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},rows,columnWidths:[1400,3000,...Array(14).fill(760),900,1050,1050,1050,1050,1050]});
+ const logoRun=new ImageRun({type:'jpg',data:logo,transformation:{width:70,height:70}}), barcodeRun=new ImageRun({type:'png',data:barcode,transformation:{width:190,height:62}});
+ const headCells=rtl?[new TableCell({width:{size:9000,type:WidthType.DXA},children:[para(UNI[lang],{bold:true,size:22,align:AlignmentType.CENTER}),para(L.faculty,{size:14,align:AlignmentType.CENTER}),para(L.dept,{size:14,align:AlignmentType.CENTER}),para(L.title,{bold:true,size:18,align:AlignmentType.CENTER})]}),new TableCell({width:{size:1500,type:WidthType.DXA},children:[imgPara(logoRun)]})]:[new TableCell({width:{size:1500,type:WidthType.DXA},children:[imgPara(logoRun)]}),new TableCell({width:{size:9000,type:WidthType.DXA},children:[para(UNI[lang],{bold:true,size:22,align:AlignmentType.CENTER}),para(L.faculty,{size:14,align:AlignmentType.CENTER}),para(L.dept,{size:14,align:AlignmentType.CENTER}),para(L.title,{bold:true,size:18,align:AlignmentType.CENTER})]})];
+ const titleTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:[new TableRow({children:headCells})]});
+ const barcodeTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:[new TableRow({children:[new TableCell({width:{size:9000,type:WidthType.DXA},children:[para('')]}),new TableCell({width:{size:1800,type:WidthType.DXA},children:[imgPara(barcodeRun,rtl?AlignmentType.LEFT:AlignmentType.RIGHT)]})]})]});
+ const doc=new Document({styles:{default:{document:{run:{font:'Arial',size:18}}}},sections:[{properties:{page:{size:{width:16838,height:11906,orientation:'landscape'},margin:{top:300,right:300,bottom:300,left:300}}},children:[titleTable,new Paragraph({children:[],spacing:{after:20}}),barcodeTable,metaTable,new Paragraph({children:[],spacing:{after:20}}),studentTable,para(rtl?'ملاحظة: العلامة النهائية هي مجموع المواظبة والسلوك والمشاركة والعمل الشخصي والامتحان.':lang==='fr'?'Note : la note finale est la somme de l’assiduité, de la participation, du travail personnel et de l’évaluation.':'Note: the final grade is the sum of conduct, participation, personal work and assessment.',{size:9}),para((rtl?'كود البطاقة: ':lang==='fr'?'Code de la fiche : ':'Card code: ')+cardBarcodeValue(c),{size:8})]}]});
+ const blob=await Packer.toBlob(doc),safe=(c.course||'student-follow-up').replace(/[\\/:*?"<>|]/g,'-').slice(0,80),filename=(lang==='ar'?'بطاقة-متابعة-':lang==='fr'?'Fiche-suivi-':'Student-Follow-Up-')+safe+'.docx';
+ await deliverFile(blob,filename,'application/vnd.openxmlformats-officedocument.wordprocessingml.document');toast(tr('word'));
 }
 async function exportArchive(){const archive={format:'StudentFollowUpArchive',version:VERSION,university:UNI,language:lang,exportedAt:new Date().toISOString(),cards:data.cards};const blob=new Blob([JSON.stringify(archive,null,2)],{type:'application/json;charset=utf-8'});const filename='StudentFollowUp-Blida2-Archive-'+new Date().toISOString().slice(0,10)+'.json';await deliverFile(blob,filename,'application/json');toast(tr('archive'))}
 function deleteAllData(){const msg=lang==='ar'?'سيتم حذف جميع البطاقات والطلبة والربط ببطاقات NFC من هذا الهاتف. لا يمكن التراجع عن العملية. هل تريد المتابعة؟':lang==='fr'?'Toutes les fiches, étudiants et associations NFC seront supprimés de cet appareil. Cette action est irréversible. Continuer ?':'All cards, students and NFC associations will be deleted from this device. This cannot be undone. Continue?';if(!confirm(msg))return;if(!confirm(lang==='ar'?'تأكيد نهائي: حذف كل البيانات؟':lang==='fr'?'Confirmation finale : supprimer toutes les données ?':'Final confirmation: delete all data?'))return;data={cards:[],active:null};save();render();toast(lang==='ar'?'تم حذف جميع البيانات':lang==='fr'?'Toutes les données ont été supprimées':'All data deleted')}
 
-async function makePDF(c){
- const rtl=lang==='ar';
- const d=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
- const labels={
-  ar:{title:'بطاقة متابعة الطلبة',faculty:'كلية العلوم الإنسانية والاجتماعية',dept:'قسم علم الاجتماع وعلم السكان',course:'المقياس',level:'المستوى',department:'القسم',specialty:'التخصص',group:'الفوج',teacher:'الأستاذ',semester:'السداسي',year:'الموسم الجامعي',count:'عدد الطلبة',reg:'رقم التسجيل',last:'اللقب',first:'الاسم',abs:'الغيابات',conduct:'المواظبة /3',part:'المشاركة /3',work:'العمل الشخصي /4',exam:'الامتحان /10',final:'النهائية /20',obs:'ملاحظة الطالب'},
-  fr:{title:'Fiche de suivi des étudiants',faculty:'Faculté des sciences humaines et sociales',dept:'Département de sociologie et de démographie',course:'Module',level:'Niveau',department:'Département',specialty:'Spécialité',group:'Groupe',teacher:'Enseignant',semester:'Semestre',year:'Année universitaire',count:'Nombre d’étudiants',reg:'Matricule',last:'Nom',first:'Prénom',abs:'Absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail personnel /4',exam:'Examen /10',final:'Finale /20',obs:'Observation de l’étudiant'},
-  en:{title:'Student Follow-up Card',faculty:'Faculty of Humanities and Social Sciences',dept:'Department of Sociology and Demography',course:'Course',level:'Level',department:'Department',specialty:'Specialty',group:'Group',teacher:'Teacher',semester:'Semester',year:'Academic year',count:'Number of students',reg:'Registration No.',last:'Last name',first:'First name',abs:'Absences',conduct:'Attendance /3',part:'Participation /3',work:'Personal work /4',exam:'Exam /10',final:'Final /20',obs:'Student observation'}
- };
- const L=labels[lang];
- const addFont=async(n,f,st)=>{const r=await fetch('/fonts/'+f);if(!r.ok)throw new Error('font');const b=await r.arrayBuffer();const a=new Uint8Array(b);let x='';for(let i=0;i<a.length;i+=8192)x+=String.fromCharCode(...a.subarray(i,i+8192));d.addFileToVFS(f,x);d.addFont(f,n,st)};
- if(rtl){try{await addFont('NotoNaskh','NotoNaskhArabic-Regular.ttf','normal');await addFont('NotoNaskh','NotoNaskhArabic-Bold.ttf','bold')}catch{}d.setFont('NotoNaskh','normal');if(typeof d.setR2L==='function')d.setR2L(true)}
- else{d.setFont('helvetica','normal');if(typeof d.setR2L==='function')d.setR2L(false)}
- const txt=v=>String(v??'—');
- const shape=v=>rtl&&typeof d.processArabic==='function'?d.processArabic(txt(v)):txt(v);
- const cols=a=>rtl?[...a].reverse():a;
- const rows=a=>a.map(r=>cols(r));
- const pageTitle=()=>{const W=d.internal.pageSize.getWidth();d.setFont(rtl?'NotoNaskh':'helvetica','bold');d.setFontSize(13);d.text(shape(UNI[lang]),W/2,10,{align:'center'});d.setFontSize(9);d.text(shape(L.faculty),W/2,16,{align:'center'});d.text(shape(L.dept),W/2,21,{align:'center'});d.setFontSize(12);d.text(shape(L.title),W/2,28,{align:'center'});d.line(12,31,W-12,31)};
- pageTitle();
- const metaRows=[[L.course,c.course||'—',L.level,c.level||'—',L.department,c.department||'—'],[L.specialty,c.specialty||'—',L.group,c.group||'—',L.teacher,c.teacher||'—'],[L.semester,c.semester||'—',L.year,c.year||'—',L.count,String(c.students.length)]];
- autoTable(d,{startY:34,body:rows(metaRows),theme:'grid',styles:{font:rtl?'NotoNaskh':'helvetica',fontSize:7,cellPadding:1.4,halign:rtl?'right':'left',overflow:'linebreak'},didParseCell:z=>{z.cell.text=(Array.isArray(z.cell.text)?z.cell.text:[z.cell.text]).map(shape)}});
- const sessionHeaders=c.sessions.map((_,i)=>rtl?'ح'+(i+1):'S'+(i+1));
- const head=[L.reg,L.name,L.department,L.group,...sessionHeaders,L.abs,L.conduct,L.part,L.work,L.exam,L.final];
- const body=c.students.map(st=>[txt(st.reg),txt(st.name||[st.last,st.first].filter(Boolean).join(' / ')||'—'),txt(st.section||c.department||'—'),txt(st.group||c.group||'—'),...c.sessions.map((_,i)=>st.attendance?.[i]==='P'?'✓':st.attendance?.[i]==='A'?(rtl?'غ':'A'):st.attendance?.[i]==='E'?(rtl?'م':'E'):''),String(st.attendance?.filter(x=>x==='A').length||0),String(st.conduct||''),String(st.part||''),String(st.work||''),String(st.exam||''),total(st).toFixed(2)]);
- const columnStyles=rtl?{0:{cellWidth:14},1:{cellWidth:34,halign:'right'},2:{cellWidth:18,halign:'right'},3:{cellWidth:13,halign:'right'}}:{0:{cellWidth:24},1:{cellWidth:34},2:{cellWidth:18},3:{cellWidth:13}};
- autoTable(d,{startY:(d.lastAutoTable?.finalY||34)+5,head:[cols(head)],body:rows(body),theme:'grid',margin:{left:7,right:7,top:36,bottom:10},styles:{font:rtl?'NotoNaskh':'helvetica',fontSize:4.7,cellPadding:.55,halign:'center',valign:'middle',overflow:'linebreak'},headStyles:{font:rtl?'NotoNaskh':'helvetica',fontStyle:'bold',fontSize:4.7},columnStyles,didParseCell:z=>{z.cell.text=(Array.isArray(z.cell.text)?z.cell.text:[z.cell.text]).map(shape)},didDrawPage:()=>pageTitle()});
- let y=d.lastAutoTable?.finalY||200;
- if(y>190){d.addPage();pageTitle();y=34}
- d.setFont(rtl?'NotoNaskh':'helvetica','normal');d.setFontSize(7);
- d.text(shape(rtl?'ملاحظة: العلامة النهائية = المواظبة + المشاركة + العمل الشخصي + الامتحان.':'Note: Final grade = attendance + participation + personal work + exam.'),rtl?d.internal.pageSize.getWidth()-12:12,Math.min(y+8,202),{align:rtl?'right':'left'});
- const observations=c.students.filter(st=>String(st.observation||st.note||'').trim());
- if(observations.length){d.addPage();pageTitle();const oh=[L.reg,L.name,L.obs];const ob=observations.map(st=>[txt(st.reg),txt(st.name||[st.last,st.first].filter(Boolean).join(' / ')||'—'),txt(st.observation||st.note||'')]);autoTable(d,{startY:34,head:[cols(oh)],body:rows(ob),theme:'grid',margin:{left:12,right:12},styles:{font:rtl?'NotoNaskh':'helvetica',fontSize:8,cellPadding:2,halign:rtl?'right':'left',overflow:'linebreak'},headStyles:{font:rtl?'NotoNaskh':'helvetica',fontStyle:'bold'},didParseCell:z=>{z.cell.text=(Array.isArray(z.cell.text)?z.cell.text:[z.cell.text]).map(shape)}})}
- const safe=(c.course||'student-follow-up').replace(/[\\/:*?"<>|]/g,'-').slice(0,80);
- const filename=lang==='ar'?'بطاقة-متابعة-'+safe+'.pdf':lang==='fr'?'Fiche-suivi-'+safe+'.pdf':'Student-Follow-Up-'+safe+'.pdf';
- if(Capacitor.getPlatform()==='web'){d.save(filename);return}
- const uri=d.output('datauristring').split(',')[1];const saved=await Filesystem.writeFile({path:filename,data:uri,directory:Directory.Cache});await Share.share({title:L.title,url:saved.uri});
-}
 function toast(x){const t=document.createElement('div');t.className='toast';t.textContent=x;document.body.appendChild(t);setTimeout(()=>t.remove(),1800)}
 render();
