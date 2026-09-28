@@ -5,10 +5,10 @@ import {Filesystem,Directory} from '@capacitor/filesystem';
 import {Share} from '@capacitor/share';
 import {CapacitorNfc} from '@capgo/capacitor-nfc';
 import {FilePicker} from '@capawesome/capacitor-file-picker';
-import {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,WidthType,AlignmentType,ImageRun} from 'docx';
+import {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,WidthType,AlignmentType,ImageRun,Footer} from 'docx';
 import JsBarcode from 'jsbarcode';
 
-const U='جامعة البليدة 2 لونيسي علي', UNI={ar:'جامعة البليدة 2 لونيسي علي',fr:'Université de Blida 2 Lounici Ali',en:'University of Blida 2 Lounici Ali'}, KEY='student_followup_v3', VERSION='3.10.0';
+const U='جامعة البليدة 2 لونيسي علي', UNI={ar:'جامعة البليدة 2 لونيسي علي',fr:'Université de Blida 2 Lounici Ali',en:'University of Blida 2 Lounici Ali'}, KEY='student_followup_v3', VERSION='3.11.0';
 const I=()=>({id:crypto.randomUUID(),faculty:'',department:'',section:'',course:'',level:'',specialty:'',group:'',teacher:'',semester:'',year:'2026/2027',session:0,sessions:Array.from({length:14},()=>''),students:[]});
 let data=load(),lang=localStorage.getItem('sfc_lang')||'ar',nfcListener=null,nfcMode='attendance';
 const T={ar:{title:'بطاقة متابعة الطلبة',new:'بطاقة جديدة',import:'استيراد Excel',word:'تصدير Word',archive:'تصدير أرشيف',deleteAll:'حذف جميع البيانات',save:'حفظ',students:'الطلبة',add:'إضافة طالب',scan:'مسح NFC',course:'المقياس',level:'المستوى',faculty:'الكلية',dept:'القسم',section:'الشعبة',spec:'التخصص',group:'الفوج',teacher:'الأستاذ',sem:'السداسي',year:'الموسم الجامعي',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'الغيابات',conduct:'المواظبة /3',part:'المشاركة /3',work:'العمل الشخصي /4',exam:'الامتحان /10',final:'النهائية /20',session:'الحصة الحالية',link:'ربط البطاقة',choose:'اختر طالباً',present:'تم تسجيل الحضور',unknown:'البطاقة غير مرتبطة',unsupported:'NFC غير مدعوم',disabled:'NFC غير مفعّل'},fr:{title:'Fiche de suivi des étudiants',new:'Nouvelle fiche',importer:'Importer Excel',import:'Importer Excel',word:'Exporter Word',archive:'Exporter archive',deleteAll:'Supprimer toutes les données',save:'Enregistrer',students:'Étudiants',add:'Ajouter',scan:'Scanner NFC',course:'Module',level:'Niveau',faculty:'Faculté',dept:'Département',section:'Section',spec:'Spécialité',group:'Groupe',teacher:'Enseignant',sem:'Semestre',year:'Année universitaire',reg:'Matricule',name:'Nom et prénom',abs:'Absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail /4',exam:'Examen /10',final:'Finale /20',session:'Séance',link:'Associer',choose:'Choisir',present:'Présence enregistrée',unknown:'Carte non associée',unsupported:'NFC non pris en charge',disabled:'NFC désactivé'},en:{title:'Student Follow-up Card',new:'New card',import:'Import Excel',word:'Export Word',archive:'Export archive',deleteAll:'Delete all data',save:'Save',students:'Students',add:'Add student',scan:'Scan NFC',course:'Course',level:'Level',faculty:'Faculty',dept:'Department',section:'Section',spec:'Specialty',group:'Group',teacher:'Teacher',sem:'Semester',year:'Academic year',reg:'Registration No.',name:'Name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Exam /10',final:'Final /20',session:'Session',link:'Link card',choose:'Select student',present:'Attendance recorded',unknown:'Card not linked',unsupported:'NFC unsupported',disabled:'NFC disabled'}};
@@ -250,7 +250,7 @@ async function makeWord(c){
 
  // A4 landscape printable area: 16838 - 600 = 16238 DXA.
  // The previous export used >22,000 DXA, which caused Word to clip/overflow columns.
- const W=[1050,2450,...Array(14).fill(520),700,700,700,700,700,700];
+ const W=[1000,2200,...Array(14).fill(500),750,750,750,750,750,750];
  const totalW=W.reduce((x,y)=>x+y,0); // 14980 DXA
  const run=(v,o={})=>new TextRun({text:String(v??'—'),font:'Arial',size:o.size||16,bold:!!o.bold,rtl});
  const para=(v,o={})=>new Paragraph({children:[run(v,o)],alignment:o.align||(rtl?AlignmentType.RIGHT:AlignmentType.LEFT),bidirectional:rtl,spacing:{after:0,before:0}});
@@ -292,7 +292,7 @@ async function makeWord(c){
    columnWidths:W
  });
 
- const logoRun=logo?new ImageRun({type:'jpg',data:logo,transformation:{width:105,height:105}}):null;
+ const logoRun=logo?new ImageRun({type:'jpg',data:logo,transformation:{width:125,height:125}}):null;
  const barcodeRun=barcode?new ImageRun({type:'png',data:barcode,transformation:{width:150,height:49}}):null;
  const headerLeft=new TableCell({width:{size:1900,type:WidthType.DXA},children:logoRun?[imgPara(logoRun)]:[para('')]});
  const headerText=new TableCell({width:{size:9500,type:WidthType.DXA},children:[
@@ -304,8 +304,7 @@ async function makeWord(c){
  const barcodeTable=new Table({
    width:{size:totalW,type:WidthType.DXA},alignment:AlignmentType.CENTER,
    rows:[new TableRow({children:[
-     new TableCell({width:{size:totalW-1900,type:WidthType.DXA},children:[para('')]}),
-     new TableCell({width:{size:1900,type:WidthType.DXA},children:barcode?[imgPara(barcodeRun,rtl?AlignmentType.LEFT:AlignmentType.RIGHT)]:[para('')]})
+     new TableCell({width:{size:totalW,type:WidthType.DXA},children:barcode?[imgPara(barcodeRun,AlignmentType.CENTER)]:[para('')]})
    ]})]
  });
  const notes=rtl
@@ -314,10 +313,24 @@ async function makeWord(c){
    ? 'Note : l’évaluation est sur 10 et la note finale correspond à la somme des notes renseignées. Les absences sont comptabilisées selon le règlement en vigueur.'
    : 'Note: assessment is out of 10 and the final grade is the sum of the entered grades. Absences are counted according to the applicable regulations.';
 
+ // The barcode is a true page footer: Word repeats it automatically on every page.
+ // The document number is printed directly below it, so neither element is lost when the table spans pages.
+ const footerBarcode=barcode?new ImageRun({type:'png',data:barcode,transformation:{width:185,height:60}}):null;
+ const footerNumber=para(
+   (rtl?'رقم الوثيقة: ':lang==='fr'?'N° du document : ':'Document No.: ')+cardBarcodeValue(c),
+   {size:8,bold:true,align:AlignmentType.CENTER}
+ );
+ const pageFooter=new Footer({
+   children:footerBarcode
+     ? [imgPara(footerBarcode,AlignmentType.CENTER),footerNumber]
+     : [footerNumber]
+ });
+
  const doc=new Document({
    styles:{default:{document:{run:{font:'Arial',size:16}}}},
    sections:[{
-     properties:{page:{size:{width:16838,height:11906,orientation:'landscape'},margin:{top:250,right:300,bottom:250,left:300}}},
+     properties:{page:{size:{width:16838,height:11906,orientation:'landscape'},margin:{top:250,right:300,bottom:700,left:300},footerDistance:220},
+     footers:{default:pageFooter},
      children:[
        titleTable,
        new Paragraph({children:[],spacing:{after:25,before:0}}),
@@ -329,8 +342,7 @@ async function makeWord(c){
        new Paragraph({children:[],spacing:{after:20,before:0}}),
        studentTable,
        new Paragraph({children:[],spacing:{after:10,before:0}}),
-       para(notes,{size:8,align:rtl?AlignmentType.RIGHT:AlignmentType.LEFT}),
-       para((rtl?'رمز البطاقة: ':lang==='fr'?'Code de la fiche : ':'Card code: ')+cardBarcodeValue(c),{size:7,align:rtl?AlignmentType.RIGHT:AlignmentType.LEFT})
+       para(notes,{size:8,align:rtl?AlignmentType.RIGHT:AlignmentType.LEFT})
      ]
    }]
  });
