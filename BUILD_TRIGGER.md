@@ -1,0 +1,1 @@
+Build trigger for the direct-install APK workflow. Generated after the multilingual PDF rebuild.
