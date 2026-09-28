@@ -329,7 +329,7 @@ async function makeWord(c){
  const doc=new Document({
    styles:{default:{document:{run:{font:'Arial',size:16}}}},
    sections:[{
-     properties:{page:{size:{width:16838,height:11906,orientation:'landscape'},margin:{top:250,right:300,bottom:700,left:300},footerDistance:220},
+     properties:{page:{size:{width:16838,height:11906,orientation:'landscape'},margin:{top:250,right:300,bottom:700,left:300}},footerDistance:220},
      footers:{default:pageFooter},
      children:[
        titleTable,
