@@ -15,7 +15,8 @@
     "@capgo/capacitor-nfc": "^8.2.2",
     "xlsx": "^0.18.5",
     "@capawesome/capacitor-file-picker": "^8.1.0",
-    "docx": "^9.5.1"
+    "docx": "^9.5.1",
+    "jsbarcode": "^3.11.6"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.0.0",
