@@ -251,7 +251,7 @@ async function makeWord(c){
  // A4 landscape printable area: 16838 - 600 = 16238 DXA.
  // The previous export used >22,000 DXA, which caused Word to clip/overflow columns.
  const W=[1050,2450,...Array(14).fill(520),700,700,700,700,700,700];
- const totalW=W.reduce((x,y)=>x+y,0); // 14250 DXA
+ const totalW=W.reduce((x,y)=>x+y,0); // 14980 DXA
  const run=(v,o={})=>new TextRun({text:String(v??'—'),font:'Arial',size:o.size||16,bold:!!o.bold,rtl});
  const para=(v,o={})=>new Paragraph({children:[run(v,o)],alignment:o.align||(rtl?AlignmentType.RIGHT:AlignmentType.LEFT),bidirectional:rtl,spacing:{after:0,before:0}});
  const imgPara=(im,a=AlignmentType.CENTER)=>new Paragraph({children:[im],alignment:a,spacing:{after:0,before:0}});
@@ -268,7 +268,7 @@ async function makeWord(c){
    rows:meta.map(a=>new TableRow({children:(rtl?[a[2],a[3],a[0],a[1]]:a).map((v,i)=>cell(v,metaWidths[i],i,{bold:i%2===0,size:10}) )}))
  });
  const headers=[L.reg,L.name,...c.sessions.map((_,i)=>rtl?'ح'+(i+1):'S'+(i+1)),L.abs,L.conduct,L.part,L.work,L.exam,L.finale];
- const dates=['','',...c.sessions.map(d=>d||''),'','','','','','',''];
+ const dates=['','',...c.sessions.map(d=>d||''),'','','','','',''];
  const ordered=a=>rtl?[...a].reverse():a;
  const makeHeaderRow=a=>new TableRow({children:ordered(a).map((v,i)=>{
    const logicalIndex=rtl?a.length-1-i:i;
