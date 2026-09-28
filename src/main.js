@@ -8,7 +8,7 @@ import {FilePicker} from '@capawesome/capacitor-file-picker';
 import {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,WidthType,AlignmentType,ImageRun,Footer} from 'docx';
 import JsBarcode from 'jsbarcode';
 
-const U='جامعة البليدة 2 لونيسي علي', UNI={ar:'جامعة البليدة 2 لونيسي علي',fr:'Université de Blida 2 Lounici Ali',en:'University of Blida 2 Lounici Ali'}, KEY='student_followup_v3', VERSION='3.11.0';
+const U='جامعة البليدة 2 لونيسي علي', UNI={ar:'جامعة البليدة 2 لونيسي علي',fr:'Université de Blida 2 Lounici Ali',en:'University of Blida 2 Lounici Ali'}, KEY='student_followup_v3', VERSION='3.12.0';
 const I=()=>({id:crypto.randomUUID(),faculty:'',department:'',section:'',course:'',level:'',specialty:'',group:'',teacher:'',semester:'',year:'2026/2027',session:0,sessions:Array.from({length:14},()=>''),students:[]});
 let data=load(),lang=localStorage.getItem('sfc_lang')||'ar',nfcListener=null,nfcMode='attendance';
 const T={ar:{title:'بطاقة متابعة الطلبة',new:'بطاقة جديدة',import:'استيراد Excel',word:'تصدير Word',archive:'تصدير أرشيف',deleteAll:'حذف جميع البيانات',save:'حفظ',students:'الطلبة',add:'إضافة طالب',scan:'مسح NFC',course:'المقياس',level:'المستوى',faculty:'الكلية',dept:'القسم',section:'الشعبة',spec:'التخصص',group:'الفوج',teacher:'الأستاذ',sem:'السداسي',year:'الموسم الجامعي',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'الغيابات',conduct:'المواظبة /3',part:'المشاركة /3',work:'العمل الشخصي /4',exam:'الامتحان /10',final:'النهائية /20',session:'الحصة الحالية',link:'ربط البطاقة',choose:'اختر طالباً',present:'تم تسجيل الحضور',unknown:'البطاقة غير مرتبطة',unsupported:'NFC غير مدعوم',disabled:'NFC غير مفعّل'},fr:{title:'Fiche de suivi des étudiants',new:'Nouvelle fiche',importer:'Importer Excel',import:'Importer Excel',word:'Exporter Word',archive:'Exporter archive',deleteAll:'Supprimer toutes les données',save:'Enregistrer',students:'Étudiants',add:'Ajouter',scan:'Scanner NFC',course:'Module',level:'Niveau',faculty:'Faculté',dept:'Département',section:'Section',spec:'Spécialité',group:'Groupe',teacher:'Enseignant',sem:'Semestre',year:'Année universitaire',reg:'Matricule',name:'Nom et prénom',abs:'Absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail /4',exam:'Examen /10',final:'Finale /20',session:'Séance',link:'Associer',choose:'Choisir',present:'Présence enregistrée',unknown:'Carte non associée',unsupported:'NFC non pris en charge',disabled:'NFC désactivé'},en:{title:'Student Follow-up Card',new:'New card',import:'Import Excel',word:'Export Word',archive:'Export archive',deleteAll:'Delete all data',save:'Save',students:'Students',add:'Add student',scan:'Scan NFC',course:'Course',level:'Level',faculty:'Faculty',dept:'Department',section:'Section',spec:'Specialty',group:'Group',teacher:'Teacher',sem:'Semester',year:'Academic year',reg:'Registration No.',name:'Name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Exam /10',final:'Final /20',session:'Session',link:'Link card',choose:'Select student',present:'Attendance recorded',unknown:'Card not linked',unsupported:'NFC unsupported',disabled:'NFC disabled'}};
@@ -27,6 +27,7 @@ function displayName(st){
 function cardBarcodeValue(c){return 'B2-'+String(c.id||'').replace(/-/g,'').slice(0,18).toUpperCase()}
 async function blobBytes(blob){return new Uint8Array(await blob.arrayBuffer())}
 async function fetchAssetBytes(path){const r=await fetch(path);if(!r.ok)throw new Error('asset');return new Uint8Array(await r.arrayBuffer())}
+async function circularLogoPngBytes(bytes,size=420){return await new Promise((resolve,reject)=>{const blob=new Blob([bytes],{type:'image/jpeg'});const url=URL.createObjectURL(blob);const img=new Image();img.onload=()=>{try{const n=Math.min(img.naturalWidth,img.naturalHeight);const sx=(img.naturalWidth-n)/2,sy=(img.naturalHeight-n)/2;const canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;const ctx=canvas.getContext('2d');ctx.clearRect(0,0,size,size);ctx.beginPath();ctx.arc(size/2,size/2,size/2,0,Math.PI*2);ctx.closePath();ctx.clip();ctx.drawImage(img,sx,sy,n,n,0,0,size,size);canvas.toBlob(b=>{URL.revokeObjectURL(url);b?b.arrayBuffer().then(x=>resolve(new Uint8Array(x))).catch(reject):reject(new Error('logo'))},'image/png') }catch(e){URL.revokeObjectURL(url);reject(e)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('logo'))};img.src=url})}
 async function barcodePngBytes(value){
  const canvas=document.createElement('canvas');
  JsBarcode(canvas,value,{format:'CODE128',displayValue:true,font:'Arial',fontSize:12,height:46,width:2,margin:6,textMargin:3});
@@ -292,7 +293,7 @@ async function makeWord(c){
    columnWidths:W
  });
 
- const logoRun=logo?new ImageRun({type:'jpg',data:logo,transformation:{width:125,height:125}}):null;
+ const logoRun=logo?new ImageRun({type:'png',data:logo,transformation:{width:125,height:125}}):null;
  const barcodeRun=barcode?new ImageRun({type:'png',data:barcode,transformation:{width:150,height:49}}):null;
  const headerLeft=new TableCell({width:{size:1900,type:WidthType.DXA},children:logoRun?[imgPara(logoRun)]:[para('')]});
  const headerText=new TableCell({width:{size:9500,type:WidthType.DXA},children:[
@@ -329,7 +330,7 @@ async function makeWord(c){
  const doc=new Document({
    styles:{default:{document:{run:{font:'Arial',size:16}}}},
    sections:[{
-     properties:{page:{size:{width:16838,height:11906,orientation:'landscape'},margin:{top:250,right:300,bottom:700,left:300}},footerDistance:220},
+     properties:{page:{size:{width:16838,height:11906,orientation:'landscape'},margin:{top:567,right:850,bottom:567,left:850}},footerDistance:220},
      footers:{default:pageFooter},
      children:[
        titleTable,
