@@ -199,42 +199,40 @@ async function nfc(c,mode){
 }
 async function stopNfc(m){try{await CapacitorNfc.stopScanning();if(nfcListener)await nfcListener.remove()}catch{}m.remove()}
 async function makePDF(c){
+ const rtl=lang==='ar';
  const d=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
- const add=async(n,f,st)=>{const r=await fetch('/fonts/'+f);if(!r.ok)throw new Error('font');const b=await r.arrayBuffer();let x='';const a=new Uint8Array(b);for(let i=0;i<a.length;i+=8192)x+=String.fromCharCode(...a.subarray(i,i+8192));d.addFileToVFS(f,x);d.addFont(f,n,st)};
- try{await add('NotoNaskh','NotoNaskhArabic-Regular.ttf','normal');await add('NotoNaskh','NotoNaskhArabic-Bold.ttf','bold')}catch{}
- const rtl=s=>{const v=String(s??'');return typeof d.processArabic==='function'?d.processArabic(v):v};
- const cellText=v=>rtl(v);
- d.setFont('NotoNaskh','normal');d.setFontSize(12);
- try{const lr=await fetch('/logo.png');if(lr.ok){const lb=await lr.blob();const reader=new FileReader();const logo=await new Promise(res=>{reader.onload=()=>res(reader.result);reader.readAsDataURL(lb)});d.addImage(logo,'PNG',12,6,24,24)}}catch{}
- d.text(cellText(U),148,10,{align:'center'});d.setFontSize(10);d.text(cellText('كلية العلوم الإنسانية والاجتماعية'),148,16,{align:'center'});d.text(cellText('قسم علم الاجتماع وعلم السكان'),148,22,{align:'center'});d.setFontSize(11);d.text(cellText('بطاقة متابعة الطلبة'),148,29,{align:'center'});
-
- const meta=[
-  [cellText('المقياس'),cellText(c.course||'—'),cellText('المستوى'),cellText(c.level||'—'),cellText('القسم'),cellText(c.department||'—')],
-  [cellText('التخصص'),cellText(c.specialty||'—'),cellText('الفوج'),cellText(c.group||'—'),cellText('الأستاذ'),cellText(c.teacher||'—')],
-  [cellText('السداسي'),cellText(c.semester||'—'),cellText('الموسم الجامعي'),cellText(c.year||'—'),cellText('عدد الطلبة'),String(c.students.length)]
- ];
- autoTable(d,{startY:34,body:meta,theme:'grid',styles:{font:'NotoNaskh',fontStyle:'normal',fontSize:7,halign:'right',cellPadding:1.2},columnStyles:{0:{cellWidth:24,fontStyle:'bold'},1:{cellWidth:63},2:{cellWidth:24,fontStyle:'bold'},3:{cellWidth:63},4:{cellWidth:24,fontStyle:'bold'},5:{cellWidth:63}},didParseCell:data=>{if(typeof data.cell.text==='string')data.cell.text=[cellText(data.cell.text)];else data.cell.text=data.cell.text.map(x=>cellText(x))}});
-
- const head=[[cellText('رقم التسجيل'),cellText('اللقب كما في Excel'),cellText('الاسم كما في Excel'),cellText('القسم'),cellText('الفوج'),...c.sessions.map((_,i)=>cellText('ح'+(i+1))),cellText('الغيابات'),cellText('المواظبة /3'),cellText('المشاركة /3'),cellText('العمل /4'),cellText('الامتحان /10'),cellText('النهائية /20')]];
- const body=c.students.map(st=>[
-  String(st.reg||''),
-  cellText(st.last||st.name||'—'),
-  cellText(st.first||'—'),
-  cellText(st.section||c.department||'—'),
-  cellText(st.group||c.group||'—'),
-  ...c.sessions.map((_,i)=>st.attendance?.[i]==='P'?'✓':st.attendance?.[i]==='A'?cellText('غ'):st.attendance?.[i]==='E'?cellText('م'):''),
-  String(st.attendance?.filter(x=>x==='A').length||0),
-  String(st.conduct||''),String(st.part||''),String(st.work||''),String(st.exam||''),total(st).toFixed(2)
- ]);
-
- const tableY=(d.lastAutoTable?.finalY||34)+5;
- autoTable(d,{startY:tableY,head,body,theme:'grid',styles:{font:'NotoNaskh',fontStyle:'normal',fontSize:5.2,cellPadding:.65,halign:'center',overflow:'linebreak'},headStyles:{font:'NotoNaskh',fontStyle:'bold',fontSize:5.2},columnStyles:{0:{cellWidth:24},1:{cellWidth:34,halign:'right'},2:{cellWidth:34,halign:'right'},3:{cellWidth:18},4:{cellWidth:14}},didParseCell:data=>{if(Array.isArray(data.cell.text))data.cell.text=data.cell.text.map(x=>cellText(x));else data.cell.text=[cellText(data.cell.text)]}});
-
- const y=(d.lastAutoTable?.finalY||195)+5;
- d.setFontSize(7);d.text(cellText('ملاحظات: العلامة النهائية = المواظبة + المشاركة + العمل الشخصي + الامتحان.'),12,Math.min(y,202),{align:'left'});
- const name='بطاقة-متابعة-'+(c.course||'طلبة')+'.pdf';
- if(Capacitor.getPlatform()==='web'){d.save(name);return}
- const uri=d.output('datauristring').split(',')[1];const saved=await Filesystem.writeFile({path:name,data:uri,directory:Directory.Cache});await Share.share({title:'بطاقة متابعة الطلبة',url:saved.uri});
+ const labels={
+  ar:{title:'بطاقة متابعة الطلبة',faculty:'كلية العلوم الإنسانية والاجتماعية',dept:'قسم علم الاجتماع وعلم السكان',course:'المقياس',level:'المستوى',department:'القسم',specialty:'التخصص',group:'الفوج',teacher:'الأستاذ',semester:'السداسي',year:'الموسم الجامعي',count:'عدد الطلبة',reg:'رقم التسجيل',last:'اللقب',first:'الاسم',abs:'الغيابات',conduct:'المواظبة /3',part:'المشاركة /3',work:'العمل الشخصي /4',exam:'الامتحان /10',final:'النهائية /20',obs:'ملاحظة الطالب'},
+  fr:{title:'Fiche de suivi des étudiants',faculty:'Faculté des sciences humaines et sociales',dept:'Département de sociologie et de démographie',course:'Module',level:'Niveau',department:'Département',specialty:'Spécialité',group:'Groupe',teacher:'Enseignant',semester:'Semestre',year:'Année universitaire',count:'Nombre d’étudiants',reg:'Matricule',last:'Nom',first:'Prénom',abs:'Absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail personnel /4',exam:'Examen /10',final:'Finale /20',obs:'Observation de l’étudiant'},
+  en:{title:'Student Follow-up Card',faculty:'Faculty of Humanities and Social Sciences',dept:'Department of Sociology and Demography',course:'Course',level:'Level',department:'Department',specialty:'Specialty',group:'Group',teacher:'Teacher',semester:'Semester',year:'Academic year',count:'Number of students',reg:'Registration No.',last:'Last name',first:'First name',abs:'Absences',conduct:'Attendance /3',part:'Participation /3',work:'Personal work /4',exam:'Exam /10',final:'Final /20',obs:'Student observation'}
+ };
+ const L=labels[lang];
+ const addFont=async(n,f,st)=>{const r=await fetch('/fonts/'+f);if(!r.ok)throw new Error('font');const b=await r.arrayBuffer();const a=new Uint8Array(b);let x='';for(let i=0;i<a.length;i+=8192)x+=String.fromCharCode(...a.subarray(i,i+8192));d.addFileToVFS(f,x);d.addFont(f,n,st)};
+ if(rtl){try{await addFont('NotoNaskh','NotoNaskhArabic-Regular.ttf','normal');await addFont('NotoNaskh','NotoNaskhArabic-Bold.ttf','bold')}catch{}d.setFont('NotoNaskh','normal');if(typeof d.setR2L==='function')d.setR2L(true)}
+ else{d.setFont('helvetica','normal');if(typeof d.setR2L==='function')d.setR2L(false)}
+ const txt=v=>String(v??'—');
+ const shape=v=>rtl&&typeof d.processArabic==='function'?d.processArabic(txt(v)):txt(v);
+ const cols=a=>rtl?[...a].reverse():a;
+ const rows=a=>a.map(r=>cols(r));
+ const pageTitle=()=>{const W=d.internal.pageSize.getWidth();d.setFont(rtl?'NotoNaskh':'helvetica','bold');d.setFontSize(13);d.text(shape(U),W/2,10,{align:'center'});d.setFontSize(9);d.text(shape(L.faculty),W/2,16,{align:'center'});d.text(shape(L.dept),W/2,21,{align:'center'});d.setFontSize(12);d.text(shape(L.title),W/2,28,{align:'center'});d.line(12,31,W-12,31)};
+ pageTitle();
+ const metaRows=[[L.course,c.course||'—',L.level,c.level||'—',L.department,c.department||'—'],[L.specialty,c.specialty||'—',L.group,c.group||'—',L.teacher,c.teacher||'—'],[L.semester,c.semester||'—',L.year,c.year||'—',L.count,String(c.students.length)]];
+ autoTable(d,{startY:34,body:rows(metaRows),theme:'grid',styles:{font:rtl?'NotoNaskh':'helvetica',fontSize:7,cellPadding:1.4,halign:rtl?'right':'left',overflow:'linebreak'},didParseCell:z=>{z.cell.text=(Array.isArray(z.cell.text)?z.cell.text:[z.cell.text]).map(shape)}});
+ const sessionHeaders=c.sessions.map((_,i)=>rtl?'ح'+(i+1):'S'+(i+1));
+ const head=[L.reg,L.last,L.first,L.department,L.group,...sessionHeaders,L.abs,L.conduct,L.part,L.work,L.exam,L.final];
+ const body=c.students.map(st=>[txt(st.reg),txt(st.last||st.name||'—'),txt(st.first||''),txt(st.section||c.department||'—'),txt(st.group||c.group||'—'),...c.sessions.map((_,i)=>st.attendance?.[i]==='P'?'✓':st.attendance?.[i]==='A'?(rtl?'غ':'A'):st.attendance?.[i]==='E'?(rtl?'م':'E'):''),String(st.attendance?.filter(x=>x==='A').length||0),String(st.conduct||''),String(st.part||''),String(st.work||''),String(st.exam||''),total(st).toFixed(2)]);
+ const columnStyles=rtl?{0:{cellWidth:14},1:{cellWidth:25,halign:'right'},2:{cellWidth:25,halign:'right'},3:{cellWidth:16,halign:'right'},4:{cellWidth:13,halign:'right'}}:{0:{cellWidth:24},1:{cellWidth:25},2:{cellWidth:25},3:{cellWidth:16},4:{cellWidth:13}};
+ autoTable(d,{startY:(d.lastAutoTable?.finalY||34)+5,head:[cols(head)],body:rows(body),theme:'grid',margin:{left:7,right:7,top:36,bottom:10},styles:{font:rtl?'NotoNaskh':'helvetica',fontSize:4.7,cellPadding:.55,halign:'center',valign:'middle',overflow:'linebreak'},headStyles:{font:rtl?'NotoNaskh':'helvetica',fontStyle:'bold',fontSize:4.7},columnStyles,didParseCell:z=>{z.cell.text=(Array.isArray(z.cell.text)?z.cell.text:[z.cell.text]).map(shape)},didDrawPage:()=>pageTitle()});
+ let y=d.lastAutoTable?.finalY||200;
+ if(y>190){d.addPage();pageTitle();y=34}
+ d.setFont(rtl?'NotoNaskh':'helvetica','normal');d.setFontSize(7);
+ d.text(shape(rtl?'ملاحظة: العلامة النهائية = المواظبة + المشاركة + العمل الشخصي + الامتحان.':'Note: Final grade = attendance + participation + personal work + exam.'),rtl?d.internal.pageSize.getWidth()-12:12,Math.min(y+8,202),{align:rtl?'right':'left'});
+ const observations=c.students.filter(st=>String(st.observation||st.note||'').trim());
+ if(observations.length){d.addPage();pageTitle();const oh=[L.reg,L.last,L.first,L.obs];const ob=observations.map(st=>[txt(st.reg),txt(st.last||st.name||'—'),txt(st.first||''),txt(st.observation||st.note||'')]);autoTable(d,{startY:34,head:[cols(oh)],body:rows(ob),theme:'grid',margin:{left:12,right:12},styles:{font:rtl?'NotoNaskh':'helvetica',fontSize:8,cellPadding:2,halign:rtl?'right':'left',overflow:'linebreak'},headStyles:{font:rtl?'NotoNaskh':'helvetica',fontStyle:'bold'},didParseCell:z=>{z.cell.text=(Array.isArray(z.cell.text)?z.cell.text:[z.cell.text]).map(shape)}})}
+ const safe=(c.course||'student-follow-up').replace(/[\\/:*?"<>|]/g,'-').slice(0,80);
+ const filename=lang==='ar'?'بطاقة-متابعة-'+safe+'.pdf':lang==='fr'?'Fiche-suivi-'+safe+'.pdf':'Student-Follow-Up-'+safe+'.pdf';
+ if(Capacitor.getPlatform()==='web'){d.save(filename);return}
+ const uri=d.output('datauristring').split(',')[1];const saved=await Filesystem.writeFile({path:filename,data:uri,directory:Directory.Cache});await Share.share({title:L.title,url:saved.uri});
 }
 function toast(x){const t=document.createElement('div');t.className='toast';t.textContent=x;document.body.appendChild(t);setTimeout(()=>t.remove(),1800)}
 render();
