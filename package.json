@@ -1,6 +1,6 @@
 {
   "name": "student-followup-blida2",
-  "version": "3.1.0",
+  "version": "3.5.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,8 @@
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "xlsx": "^0.18.5",
-    "@capawesome/capacitor-file-picker": "^8.1.0"
+    "@capawesome/capacitor-file-picker": "^8.1.0",
+    "docx": "^9.5.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.0.0",
