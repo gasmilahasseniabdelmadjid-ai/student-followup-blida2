@@ -111,7 +111,7 @@ async function importExcel(e,c){
   if(!rows.length)throw new Error('لم يتم العثور على بيانات الطلبة بعد صف العناوين');
   let added=0,updated=0,skipped=0;
   for(const r of rows){
-   const reg=value(r,'reg');
+   let reg=value(r,'reg');
    let name=value(r,'name');
    if(!name){const l=value(r,'last'),f2=value(r,'first');name=[l,f2].filter(Boolean).join(' / ')}
    const uid=value(r,'nfc').toUpperCase().replace(/[^0-9A-F]/g,'');
