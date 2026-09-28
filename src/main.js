@@ -196,14 +196,35 @@ async function makePDF(c){
  const d=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
  const add=async(n,f,st)=>{const r=await fetch('/fonts/'+f);if(!r.ok)throw new Error('font');const b=await r.arrayBuffer();let x='';const a=new Uint8Array(b);for(let i=0;i<a.length;i+=8192)x+=String.fromCharCode(...a.subarray(i,i+8192));d.addFileToVFS(f,x);d.addFont(f,n,st)};
  try{await add('NotoNaskh','NotoNaskhArabic-Regular.ttf','normal');await add('NotoNaskh','NotoNaskhArabic-Bold.ttf','bold')}catch{}
- d.setFont('NotoNaskh');d.setFontSize(12);
+ const rtl=s=>{const v=String(s??'');return typeof d.processArabic==='function'?d.processArabic(v):v};
+ const cellText=v=>rtl(v);
+ d.setFont('NotoNaskh','normal');d.setFontSize(12);
  try{const lr=await fetch('/logo.png');if(lr.ok){const lb=await lr.blob();const reader=new FileReader();const logo=await new Promise(res=>{reader.onload=()=>res(reader.result);reader.readAsDataURL(lb)});d.addImage(logo,'PNG',12,6,24,24)}}catch{}
- d.text(U,148,10,{align:'center'});d.setFontSize(10);d.text('كلية العلوم الإنسانية والاجتماعية',148,16,{align:'center'});d.text('قسم علوم الإعلام والاتصال',148,22,{align:'center'});d.setFontSize(11);d.text('بطاقة متابعة الطلبة',148,29,{align:'center'});
- autoTable(d,{startY:34,body:[['المقياس: '+c.course,'المستوى: '+c.level,'التخصص: '+c.specialty],['الفوج: '+c.group,'الأستاذ: '+c.teacher,'السداسي: '+c.semester+' — '+c.year]],theme:'grid',styles:{font:'NotoNaskh',fontSize:7,halign:'right'}});
- const head=[['رقم التسجيل','اللقب والاسم',...c.sessions.map((_,i)=>'ح'+(i+1)),'الغيابات','المواظبة /3','المشاركة /3','العمل /4','الامتحان /10','النهائية /20']];
- const body=c.students.map(st=>[st.reg,st.name,...c.sessions.map((_,i)=>st.attendance?.[i]==='P'?'✓':st.attendance?.[i]==='A'?'غ':st.attendance?.[i]==='E'?'م':''),String(st.attendance?.filter(x=>x==='A').length||0),st.conduct,st.part,st.work,st.exam,total(st).toFixed(2)]);
- autoTable(d,{startY:55,head,body,theme:'grid',styles:{font:'NotoNaskh',fontSize:5.4,cellPadding:.7,halign:'center'},headStyles:{font:'NotoNaskh'}});
- d.setFontSize(7);d.text('ملاحظات: عالمة الامتحان لا تزيد عن /10 — العالمة النهائية حصيلة مجموع العلامات.',12,202,{align:'left'});
+ d.text(cellText(U),148,10,{align:'center'});d.setFontSize(10);d.text(cellText('كلية العلوم الإنسانية والاجتماعية'),148,16,{align:'center'});d.text(cellText('قسم علم الاجتماع وعلم السكان'),148,22,{align:'center'});d.setFontSize(11);d.text(cellText('بطاقة متابعة الطلبة'),148,29,{align:'center'});
+
+ const meta=[
+  [cellText('المقياس'),cellText(c.course||'—'),cellText('المستوى'),cellText(c.level||'—'),cellText('القسم'),cellText(c.department||'—')],
+  [cellText('التخصص'),cellText(c.specialty||'—'),cellText('الفوج'),cellText(c.group||'—'),cellText('الأستاذ'),cellText(c.teacher||'—')],
+  [cellText('السداسي'),cellText(c.semester||'—'),cellText('الموسم الجامعي'),cellText(c.year||'—'),cellText('عدد الطلبة'),String(c.students.length)]
+ ];
+ autoTable(d,{startY:34,body:meta,theme:'grid',styles:{font:'NotoNaskh',fontStyle:'normal',fontSize:7,halign:'right',cellPadding:1.2},columnStyles:{0:{cellWidth:24,fontStyle:'bold'},1:{cellWidth:63},2:{cellWidth:24,fontStyle:'bold'},3:{cellWidth:63},4:{cellWidth:24,fontStyle:'bold'},5:{cellWidth:63}},didParseCell:data=>{if(typeof data.cell.text==='string')data.cell.text=[cellText(data.cell.text)];else data.cell.text=data.cell.text.map(x=>cellText(x))}});
+
+ const head=[[cellText('رقم التسجيل'),cellText('اللقب والاسم'),cellText('القسم'),cellText('الفوج'),...c.sessions.map((_,i)=>cellText('ح'+(i+1))),cellText('الغيابات'),cellText('المواظبة /3'),cellText('المشاركة /3'),cellText('العمل /4'),cellText('الامتحان /10'),cellText('النهائية /20')]];
+ const body=c.students.map(st=>[
+  String(st.reg||''),
+  cellText(st.name||[st.last,st.first].filter(Boolean).join(' / ')||'—'),
+  cellText(st.section||c.department||'—'),
+  cellText(st.group||c.group||'—'),
+  ...c.sessions.map((_,i)=>st.attendance?.[i]==='P'?'✓':st.attendance?.[i]==='A'?cellText('غ'):st.attendance?.[i]==='E'?cellText('م'):''),
+  String(st.attendance?.filter(x=>x==='A').length||0),
+  String(st.conduct||''),String(st.part||''),String(st.work||''),String(st.exam||''),total(st).toFixed(2)
+ ]);
+
+ const tableY=(d.lastAutoTable?.finalY||34)+5;
+ autoTable(d,{startY:tableY,head,body,theme:'grid',styles:{font:'NotoNaskh',fontStyle:'normal',fontSize:5.2,cellPadding:.65,halign:'center',overflow:'linebreak'},headStyles:{font:'NotoNaskh',fontStyle:'bold',fontSize:5.2},columnStyles:{0:{cellWidth:24},1:{cellWidth:34,halign:'right'},2:{cellWidth:18},3:{cellWidth:14}},didParseCell:data=>{if(Array.isArray(data.cell.text))data.cell.text=data.cell.text.map(x=>cellText(x));else data.cell.text=[cellText(data.cell.text)]}});
+
+ const y=(d.lastAutoTable?.finalY||195)+5;
+ d.setFontSize(7);d.text(cellText('ملاحظات: العلامة النهائية = المواظبة + المشاركة + العمل الشخصي + الامتحان.'),12,Math.min(y,202),{align:'left'});
  const name='بطاقة-متابعة-'+(c.course||'طلبة')+'.pdf';
  if(Capacitor.getPlatform()==='web'){d.save(name);return}
  const uri=d.output('datauristring').split(',')[1];const saved=await Filesystem.writeFile({path:name,data:uri,directory:Directory.Cache});await Share.share({title:'بطاقة متابعة الطلبة',url:saved.uri});
