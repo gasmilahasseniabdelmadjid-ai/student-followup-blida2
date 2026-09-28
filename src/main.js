@@ -8,10 +8,10 @@ import {FilePicker} from '@capawesome/capacitor-file-picker';
 import {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,WidthType,AlignmentType,ImageRun} from 'docx';
 import JsBarcode from 'jsbarcode';
 
-const U='جامعة البليدة 2 لونيسي علي', UNI={ar:'جامعة البليدة 2 لونيسي علي',fr:'Université de Blida 2 Lounici Ali',en:'University of Blida 2 Lounici Ali'}, KEY='student_followup_v3', VERSION='3.6.0';
-const I=()=>({id:crypto.randomUUID(),course:'',level:'',department:'',specialty:'',group:'',teacher:'',semester:'',year:'2026/2027',session:0,sessions:Array.from({length:14},()=>''),students:[]});
+const U='جامعة البليدة 2 لونيسي علي', UNI={ar:'جامعة البليدة 2 لونيسي علي',fr:'Université de Blida 2 Lounici Ali',en:'University of Blida 2 Lounici Ali'}, KEY='student_followup_v3', VERSION='3.10.0';
+const I=()=>({id:crypto.randomUUID(),faculty:'',department:'',section:'',course:'',level:'',specialty:'',group:'',teacher:'',semester:'',year:'2026/2027',session:0,sessions:Array.from({length:14},()=>''),students:[]});
 let data=load(),lang=localStorage.getItem('sfc_lang')||'ar',nfcListener=null,nfcMode='attendance';
-const T={ar:{title:'بطاقة متابعة الطلبة',new:'بطاقة جديدة',import:'استيراد Excel',word:'تصدير Word',archive:'تصدير أرشيف',deleteAll:'حذف جميع البيانات',save:'حفظ',students:'الطلبة',add:'إضافة طالب',scan:'مسح NFC',course:'المقياس',level:'المستوى',dept:'القسم',spec:'التخصص',group:'الفوج',teacher:'الأستاذ',sem:'السداسي',year:'الموسم الجامعي',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'الغيابات',conduct:'المواظبة /3',part:'المشاركة /3',work:'العمل الشخصي /4',exam:'الامتحان /10',final:'النهائية /20',session:'الحصة الحالية',link:'ربط البطاقة',choose:'اختر طالباً',present:'تم تسجيل الحضور',unknown:'البطاقة غير مرتبطة',unsupported:'NFC غير مدعوم',disabled:'NFC غير مفعّل'},fr:{title:'Fiche de suivi des étudiants',new:'Nouvelle fiche',importer:'Importer Excel',import:'Importer Excel',word:'Exporter Word',archive:'Exporter archive',deleteAll:'Supprimer toutes les données',save:'Enregistrer',students:'Étudiants',add:'Ajouter',scan:'Scanner NFC',course:'Module',level:'Niveau',dept:'Département',spec:'Spécialité',group:'Groupe',teacher:'Enseignant',sem:'Semestre',year:'Année universitaire',reg:'Matricule',name:'Nom et prénom',abs:'Absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail /4',exam:'Examen /10',final:'Finale /20',session:'Séance',link:'Associer',choose:'Choisir',present:'Présence enregistrée',unknown:'Carte non associée',unsupported:'NFC non pris en charge',disabled:'NFC désactivé'},en:{title:'Student Follow-up Card',new:'New card',import:'Import Excel',word:'Export Word',archive:'Export archive',deleteAll:'Delete all data',save:'Save',students:'Students',add:'Add student',scan:'Scan NFC',course:'Course',level:'Level',dept:'Department',spec:'Specialty',group:'Group',teacher:'Teacher',sem:'Semester',year:'Academic year',reg:'Registration No.',name:'Name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Exam /10',final:'Final /20',session:'Session',link:'Link card',choose:'Select student',present:'Attendance recorded',unknown:'Card not linked',unsupported:'NFC unsupported',disabled:'NFC disabled'}};
+const T={ar:{title:'بطاقة متابعة الطلبة',new:'بطاقة جديدة',import:'استيراد Excel',word:'تصدير Word',archive:'تصدير أرشيف',deleteAll:'حذف جميع البيانات',save:'حفظ',students:'الطلبة',add:'إضافة طالب',scan:'مسح NFC',course:'المقياس',level:'المستوى',faculty:'الكلية',dept:'القسم',section:'الشعبة',spec:'التخصص',group:'الفوج',teacher:'الأستاذ',sem:'السداسي',year:'الموسم الجامعي',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'الغيابات',conduct:'المواظبة /3',part:'المشاركة /3',work:'العمل الشخصي /4',exam:'الامتحان /10',final:'النهائية /20',session:'الحصة الحالية',link:'ربط البطاقة',choose:'اختر طالباً',present:'تم تسجيل الحضور',unknown:'البطاقة غير مرتبطة',unsupported:'NFC غير مدعوم',disabled:'NFC غير مفعّل'},fr:{title:'Fiche de suivi des étudiants',new:'Nouvelle fiche',importer:'Importer Excel',import:'Importer Excel',word:'Exporter Word',archive:'Exporter archive',deleteAll:'Supprimer toutes les données',save:'Enregistrer',students:'Étudiants',add:'Ajouter',scan:'Scanner NFC',course:'Module',level:'Niveau',faculty:'Faculté',dept:'Département',section:'Section',spec:'Spécialité',group:'Groupe',teacher:'Enseignant',sem:'Semestre',year:'Année universitaire',reg:'Matricule',name:'Nom et prénom',abs:'Absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail /4',exam:'Examen /10',final:'Finale /20',session:'Séance',link:'Associer',choose:'Choisir',present:'Présence enregistrée',unknown:'Carte non associée',unsupported:'NFC non pris en charge',disabled:'NFC désactivé'},en:{title:'Student Follow-up Card',new:'New card',import:'Import Excel',word:'Export Word',archive:'Export archive',deleteAll:'Delete all data',save:'Save',students:'Students',add:'Add student',scan:'Scan NFC',course:'Course',level:'Level',faculty:'Faculty',dept:'Department',section:'Section',spec:'Specialty',group:'Group',teacher:'Teacher',sem:'Semester',year:'Academic year',reg:'Registration No.',name:'Name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Exam /10',final:'Final /20',session:'Session',link:'Link card',choose:'Select student',present:'Attendance recorded',unknown:'Card not linked',unsupported:'NFC unsupported',disabled:'NFC disabled'}};
 const tr=k=>T[lang][k]||T.en[k]||k;
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||{cards:[],active:null}}catch{return{cards:[],active:null}}}
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
@@ -55,7 +55,7 @@ function editor(c){
  const present=c.students.filter(s=>s.attendance?.[c.session]==='P').length;
  return `<section class="stats"><div><b>${c.students.length}</b><span>${tr('students')}</span></div><div><b>${c.students.filter(s=>s.nfc).length}</b><span>NFC</span></div><div><b>${present}</b><span>${tr('present')}</span></div><div><b>${c.students.filter(s=>s.attendance?.[c.session]==='A').length}</b><span>${tr('abs')}</span></div><div><b>${c.students.filter(s=>s.attendance?.[c.session]==='E').length}</b><span>م</span></div></section>
  <section class="cardsbar"><button id="new2" class="card-action primary">＋ ${tr('new')}</button><button id="myCards" class="card-action secondary">📚 ${lang==='ar'?'بطاقاتي':lang==='fr'?'Mes fiches':'My cards'}</button><span class="active-card-name">${esc([c.course,c.specialty,c.group].filter(Boolean).join(' — ')||tr('new'))}</span></section><section class="toolbar"><button id="save">${tr('save')}</button><button id="pickExcel">📥 ${tr('import')}</button><input id="excel" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none"><button id="word">📝 ${tr('word')}</button><button id="archive">🗃️ ${tr('archive')}</button><button id="deleteAll" class="danger">🗑️ ${tr('deleteAll')}</button><button id="scan">📡 ${tr('scan')}</button><button id="link">${tr('link')}</button></section>
- <section class="cardform"><div class="fields">${field('department',tr('dept'),c.department)}${field('course',tr('course'),c.course)}${field('level',tr('level'),c.level)}${field('specialty',tr('spec'),c.specialty)}${field('group',tr('group'),c.group)}${field('teacher',tr('teacher'),c.teacher)}${field('semester',tr('sem'),c.semester)}${field('year',tr('year'),c.year)}</div></section>
+ <section class="cardform"><div class="fields">${field('faculty',tr('faculty'),c.faculty)}${field('department',tr('dept'),c.department)}${field('section',tr('section'),c.section)}${field('specialty',tr('spec'),c.specialty)}${field('teacher',tr('teacher'),c.teacher)}${field('course',tr('course'),c.course)}${field('level',tr('level'),c.level)}${field('group',tr('group'),c.group)}${field('semester',tr('sem'),c.semester)}${field('year',tr('year'),c.year)}</div></section>
  <section class="sessions"><b>${tr('session')}</b><select id="session" class="current-session">${c.sessions.map((d,i)=>`<option value="${i}" ${c.session===i?'selected':''}>ح${i+1} ${d||''}</option>`).join('')}</select><div class="sessiongrid">${c.sessions.map((d,i)=>`<label>ح${i+1}<input data-date="${i}" type="date" value="${d}"></label>`).join('')}</div></section>
  <section class="tablewrap"><button id="add">＋ ${tr('add')}</button><table><thead><tr><th>${tr('reg')}</th><th>${tr('name')}</th>${c.sessions.map((_,i)=>`<th>ح${i+1}</th>`).join('')}<th>${tr('abs')}</th><th>${tr('conduct')}</th><th>${tr('part')}</th><th>${tr('work')}</th><th>${tr('exam')}</th><th>${tr('final')}</th><th>NFC</th><th></th></tr></thead><tbody>${c.students.map((st,i)=>row(st,i,c)).join('')}</tbody></table></section>`;
 }
@@ -89,7 +89,7 @@ function wire(c){
  document.querySelector('#scan').onclick=()=>nfc(c,'attendance');
  document.querySelector('#link').onclick=()=>nfc(c,'link');
 }
-function bind(c){['department','course','level','specialty','group','teacher','semester','year'].forEach(k=>{c[k]=document.querySelector('#'+k).value});save()}
+function bind(c){['faculty','department','section','course','level','specialty','group','teacher','semester','year'].forEach(k=>{c[k]=document.querySelector('#'+k).value});save()}
 async function importExcelBlob(blob,c,name='Excel.xlsx'){ const file=new File([blob],name,{type:blob.type||'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}); await importExcel({target:{files:[file],value:name}},c); }
 async function importExcel(e,c){
  const f=e.target.files?.[0]; if(!f)return;
@@ -190,7 +190,7 @@ async function importExcel(e,c){
      updated++;
    }
    if(group&&!c.group)c.group=group;if(level&&!c.level)c.level=level;if(spec&&!c.specialty)c.specialty=spec;
-   if(section&&!c.department)c.department=section;
+   if(section&&!c.section)c.section=section;
   }
   save();render();
   toast(`${tr('import')}: +${added} / ${updated}${skipped?' — '+skipped+' متجاهل':''}`);
@@ -242,7 +242,7 @@ async function deliverFile(blob,filename,mime){
  await Share.share({title:safeName,url:saved.uri,dialogTitle:lang==='ar'?'مشاركة بطاقة Word':lang==='fr'?'Partager la fiche Word':'Share Word card'});
 }
 async function makeWord(c){
- const L={ar:{title:'بطاقة متابعة الطلبة',faculty:'كلية العلوم الإنسانية والاجتماعية',dept:'قسم علم الاجتماع وعلم السكان',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'عدد الغيابات',conduct:'علامة المواظبة والسلوك /3',part:'علامة المشاركة /3',work:'علامة العمل الشخصي /4',exam:'التقييم /10',finale:'العلامة النهائية /20',course:'المقياس',level:'المستوى',department:'القسم',specialty:'التخصص',group:'الفوج',teacher:'الأستاذ',semester:'السداسي',year:'الموسم الجامعي',sessions:'تاريخ الحصص',note:'ملاحظة'},fr:{title:'Fiche de suivi des étudiants',faculty:'Faculté des sciences humaines et sociales',dept:'Département de sociologie et de démographie',reg:'Matricule',name:'Nom et prénom',abs:'Nombre d’absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail personnel /4',exam:'Évaluation /10',finale:'Note finale /20',course:'Module',level:'Niveau',department:'Département',specialty:'Spécialité',group:'Groupe',teacher:'Enseignant',semester:'Semestre',year:'Année universitaire',sessions:'Dates des séances',note:'Note'},en:{title:'Student Follow-up Card',faculty:'Faculty of Humanities and Social Sciences',dept:'Department of Sociology and Demography',reg:'Registration No.',name:'Student name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Assessment /10',finale:'Final grade /20',course:'Course',level:'Level',department:'Department',specialty:'Specialty',group:'Group',teacher:'Teacher',semester:'Semester',year:'Academic year',sessions:'Session dates',note:'Note'}}[lang];
+ const L={ar:{title:'بطاقة متابعة الطلبة',faculty:'الكلية',dept:'القسم',section:'الشعبة',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'عدد الغيابات',conduct:'علامة المواظبة والسلوك /3',part:'علامة المشاركة /3',work:'علامة العمل الشخصي /4',exam:'التقييم /10',finale:'العلامة النهائية /20',course:'المقياس',level:'المستوى',department:'القسم',specialty:'التخصص',group:'الفوج',teacher:'الأستاذ',semester:'السداسي',year:'الموسم الجامعي',sessions:'تاريخ الحصص',note:'ملاحظة'},fr:{title:'Fiche de suivi des étudiants',faculty:'Faculté',dept:'Département',section:'Section',reg:'Matricule',name:'Nom et prénom',abs:'Nombre d’absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail personnel /4',exam:'Évaluation /10',finale:'Note finale /20',course:'Module',level:'Niveau',department:'Département',specialty:'Spécialité',group:'Groupe',teacher:'Enseignant',semester:'Semestre',year:'Année universitaire',sessions:'Dates des séances',note:'Note'},en:{title:'Student Follow-up Card',faculty:'Faculty',dept:'Department',section:'Section',reg:'Registration No.',name:'Student name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Assessment /10',finale:'Final grade /20',course:'Course',level:'Level',department:'Department',specialty:'Specialty',group:'Group',teacher:'Teacher',semester:'Semester',year:'Academic year',sessions:'Session dates',note:'Note'}}[lang];
  const rtl=lang==='ar';
  let logo=null,barcode=null;
  try{logo=await fetchAssetBytes('/university-logo.jpg')}catch(err){console.warn('University logo unavailable',err)}
@@ -260,7 +260,7 @@ async function makeWord(c){
    margins:{top:45,bottom:45,left:35,right:35},
    children:[para(v,{bold,size,align:center?AlignmentType.CENTER:(rtl?AlignmentType.RIGHT:AlignmentType.LEFT)})]
  });
- const meta=[[L.course,c.course,L.level,c.level],[L.department,c.department,L.specialty,c.specialty],[L.group,c.group,L.teacher,c.teacher],[L.semester,c.semester,L.year,c.year]];
+ const meta=[[L.faculty,c.faculty,L.dept,c.department],[L.section,c.section,L.specialty,c.specialty],[L.teacher,c.teacher,L.course,c.course],[L.level,c.level,L.group,c.group],[L.semester,c.semester,L.year,c.year]];
  const metaWidths=[1450,2600,1450,2600];
  const metaTable=new Table({
    width:{size:8100,type:WidthType.DXA},
@@ -292,17 +292,15 @@ async function makeWord(c){
    columnWidths:W
  });
 
- const logoRun=logo?new ImageRun({type:'jpg',data:logo,transformation:{width:62,height:62}}):null;
+ const logoRun=logo?new ImageRun({type:'jpg',data:logo,transformation:{width:105,height:105}}):null;
  const barcodeRun=barcode?new ImageRun({type:'png',data:barcode,transformation:{width:150,height:49}}):null;
- const headerLeft=new TableCell({width:{size:1450,type:WidthType.DXA},children:logoRun?[imgPara(logoRun)]:[para('')]});
- const headerText=new TableCell({width:{size:10000,type:WidthType.DXA},children:[
-   para(UNI[lang],{bold:true,size:19,align:AlignmentType.CENTER}),
-   para(L.faculty,{size:11,align:AlignmentType.CENTER}),
-   para(L.dept,{size:11,align:AlignmentType.CENTER}),
-   para(L.title,{bold:true,size:15,align:AlignmentType.CENTER})
+ const headerLeft=new TableCell({width:{size:1900,type:WidthType.DXA},children:logoRun?[imgPara(logoRun)]:[para('')]});
+ const headerText=new TableCell({width:{size:9500,type:WidthType.DXA},children:[
+   para(UNI[lang],{bold:true,size:22,align:AlignmentType.CENTER}),
+   para(L.title,{bold:true,size:16,align:AlignmentType.CENTER})
  ]});
  const headerCells=rtl?[headerText,headerLeft]:[headerLeft,headerText];
- const titleTable=new Table({width:{size:11450,type:WidthType.DXA},alignment:AlignmentType.CENTER,rows:[new TableRow({children:headerCells})]});
+ const titleTable=new Table({width:{size:11400,type:WidthType.DXA},alignment:AlignmentType.CENTER,rows:[new TableRow({children:headerCells})]});
  const barcodeTable=new Table({
    width:{size:totalW,type:WidthType.DXA},alignment:AlignmentType.CENTER,
    rows:[new TableRow({children:[
