@@ -51,7 +51,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: student-followup-blida2-v3.1.0-debug-apk
+          name: student-followup-blida2-v3.2.0-debug-apk
           path: |
             android/app/build/outputs/apk/debug/app-debug.apk
             SHA256SUMS.txt
