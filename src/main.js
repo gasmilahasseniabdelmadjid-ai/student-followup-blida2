@@ -59,37 +59,79 @@ async function importExcel(e,c){
  try{
   const wb=XLSX.read(await f.arrayBuffer(),{cellDates:false,raw:false});
   const ws=wb.Sheets[wb.SheetNames[0]];
-  const rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false});
-  if(!rows.length)throw new Error('لم يتم العثور على صفوف في ملف Excel');
-  const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[\s_\-./()]+/g,'').replace(/[إأآا]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه');
+  const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+  if(!matrix.length)throw new Error('لم يتم العثور على بيانات في ملف Excel');
+
+  const norm=v=>String(v??'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase()
+    .replace(/[\\s_\\-./()]+/g,'').replace(/[إأآا]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه');
+
+  // ملف الجامعة: السطر 1 عنوان الملف، السطر 2 رؤوس الأعمدة، ثم بيانات الطلبة.
+  const headerIndex=matrix.findIndex((row,i)=>i<8 && row.some(v=>['matricule','رقمالتسجيل','nom','prenom','اللقب','الاسم','note'].includes(norm(v))));
+  const h=headerIndex>=0?headerIndex:0;
+  const headers=(matrix[h]||[]).map((v,i)=>String(v??'').trim()||('COL'+i));
+  const rows=matrix.slice(h+1).map(row=>{const o={};headers.forEach((k,i)=>o[k]=row[i]??'');return o}).filter(r=>Object.values(r).some(v=>String(v).trim()));
+
   const aliases={
    reg:['رقمالتسجيل','matricule','registrationno','registrationnumber','studentid','id','ninscription'],
    name:['اللقبوالاسم','nomprenom','nometprenom','name','fullname','studentname'],
    last:['اللقب','nom','lastname','surname'],
    first:['الاسم','prenom','firstname'],
+   note:['note','mark','grade','العلامة','النقطة'],
+   absent:['absent','absence','غياب','غائب'],
+   justified:['absencejustifiee','absencedjustifiee','absjustifiee','absencejustified','غيابمبرر'],
+   observation:['observation','remarque','ملاحظة'],
+   section:['section','section'],
    group:['الفوج','groupe','group'],
    level:['المستوى','niveau','level'],
    spec:['التخصص','specialite','specialty'],
    nfc:['nfc','uid','nfcuid','rfid','rfiduid']
   };
   const find=(keys,want)=>keys.find(x=>aliases[want]?.includes(norm(x)))??null;
-  let added=0,updated=0;
-  for(const r of rows){
-   const keys=Object.keys(r);
-   const reg=String(r[find(keys,'reg')]??'').trim();
-   let name=String(r[find(keys,'name')]??'').trim();
-   if(!name){const l=String(r[find(keys,'last')]??'').trim(),f2=String(r[find(keys,'first')]??'').trim();name=[l,f2].filter(Boolean).join(' ')}
-   const uid=String(r[find(keys,'nfc')]??'').trim().toUpperCase().replace(/[^0-9A-F]/g,'');
-   const group=String(r[find(keys,'group')]??'').trim();
-   const level=String(r[find(keys,'level')]??'').trim();
-   const spec=String(r[find(keys,'spec')]??'').trim();
-   if(!reg&&!name)continue;
-   let st=c.students.find(x=>reg&&x.reg===reg)||c.students.find(x=>name&&x.name===name);
-   if(st){st.name=name||st.name; if(reg)st.reg=reg; if(uid)st.nfc=uid; updated++}
-   else {c.students.push({reg,name,group,level,specialty:spec,attendance:Array(14).fill(''),conduct:'',part:'',work:'',exam:'',nfc:uid});added++}
-   if(group&&!c.group)c.group=group; if(level&&!c.level)c.level=level; if(spec&&!c.specialty)c.specialty=spec;
+  const value=(r,want)=>{const k=find(Object.keys(r),want);return k==null?'':String(r[k]??'').trim()};
+
+  // قراءة عنوان الملف في السطر الأول، مثل:
+  // GASMI ... sociologie de loisir et du voyage/Semestre 2/Hôtels et restaurants/G2
+  const title=String((matrix[0]||[]).find(v=>String(v).trim())||'').trim();
+  if(title){
+    const parts=title.split('/').map(x=>x.trim()).filter(Boolean);
+    if(parts.length){
+      const sem=parts.find(x=>/semestre|السداسي/i.test(x));
+      const grp=parts.find(x=>/^G\\d+$/i.test(x)||/groupe|الفوج/i.test(x));
+      const candidateCourse=parts.length>=4?parts[parts.length-3]:(parts.length>=2?parts[parts.length-2]:'');
+      if(candidateCourse&&!c.course)c.course=candidateCourse;
+      if(sem&&!c.semester)c.semester=sem;
+      if(grp&&!c.group)c.group=grp.replace(/^groupe\\s*/i,'').trim();
+    }
   }
-  save();render();toast(`${tr('import')}: +${added} / ${updated} `);
+
+  if(!rows.length)throw new Error('لم يتم العثور على بيانات الطلبة بعد صف العناوين');
+  let added=0,updated=0,skipped=0;
+  for(const r of rows){
+   const reg=value(r,'reg');
+   let name=value(r,'name');
+   if(!name){const l=value(r,'last'),f2=value(r,'first');name=[l,f2].filter(Boolean).join(' / ')}
+   const uid=value(r,'nfc').toUpperCase().replace(/[^0-9A-F]/g,'');
+   const group=value(r,'group'),level=value(r,'level'),spec=value(r,'spec');
+   const note=value(r,'note'),absent=value(r,'absent'),justified=value(r,'justified'),observation=value(r,'observation'),section=value(r,'section');
+   if(!reg&&!name){skipped++;continue}
+
+   let st=c.students.find(x=>reg&&String(x.reg).trim()===reg)||c.students.find(x=>name&&String(x.name).trim()===name);
+   if(!st){
+     st={reg,name,group,level,specialty:spec,section,note,absent,justified,observation,
+       attendance:Array(14).fill(''),conduct:'',part:'',work:'',exam:'',nfc:uid};
+     c.students.push(st);added++;
+   }else{
+     st.name=name||st.name; if(reg)st.reg=reg; if(uid)st.nfc=uid;
+     if(group)st.group=group;if(level)st.level=level;if(spec)st.specialty=spec;
+     if(section)st.section=section;if(note)st.note=note;if(absent)st.absent=absent;
+     if(justified)st.justified=justified;if(observation)st.observation=observation;
+     updated++;
+   }
+   if(group&&!c.group)c.group=group;if(level&&!c.level)c.level=level;if(spec&&!c.specialty)c.specialty=spec;
+   if(section&&!c.department)c.department=section;
+  }
+  save();render();
+  toast(`${tr('import')}: +${added} / ${updated}${skipped?' — '+skipped+' متجاهل':''}`);
  }catch(err){alert('فشل استيراد Excel: '+(err?.message||err))}
  finally{e.target.value=''}
 }
