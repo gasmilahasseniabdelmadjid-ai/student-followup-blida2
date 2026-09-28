@@ -7,7 +7,7 @@ import {Filesystem,Directory} from '@capacitor/filesystem';
 import {Share} from '@capacitor/share';
 import {CapacitorNfc} from '@capgo/capacitor-nfc';
 
-const U='جامعة البليدة 2 لونيسي علي', KEY='student_followup_v3', VERSION='3.2.0';
+const U='جامعة البليدة 2 لونيسي علي', KEY='student_followup_v3', VERSION='3.3.0';
 const I=()=>({id:crypto.randomUUID(),course:'',level:'',department:'',specialty:'',group:'',teacher:'',semester:'',year:'2026/2027',session:0,sessions:Array.from({length:14},()=>''),students:[]});
 let data=load(),lang=localStorage.getItem('sfc_lang')||'ar',nfcListener=null,nfcMode='attendance';
 const T={ar:{title:'بطاقة متابعة الطلبة',new:'بطاقة جديدة',import:'استيراد Excel',pdf:'تصدير PDF',save:'حفظ',students:'الطلبة',add:'إضافة طالب',scan:'مسح NFC',course:'المقياس',level:'المستوى',dept:'القسم',spec:'التخصص',group:'الفوج',teacher:'الأستاذ',sem:'السداسي',year:'الموسم الجامعي',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'الغيابات',conduct:'المواظبة /3',part:'المشاركة /3',work:'العمل الشخصي /4',exam:'الامتحان /10',final:'النهائية /20',session:'الحصة الحالية',link:'ربط البطاقة',choose:'اختر طالباً',present:'تم تسجيل الحضور',unknown:'البطاقة غير مرتبطة',unsupported:'NFC غير مدعوم',disabled:'NFC غير مفعّل'},fr:{title:'Fiche de suivi des étudiants',new:'Nouvelle fiche',importer:'Importer Excel',import:'Importer Excel',pdf:'Exporter PDF',save:'Enregistrer',students:'Étudiants',add:'Ajouter',scan:'Scanner NFC',course:'Module',level:'Niveau',dept:'Département',spec:'Spécialité',group:'Groupe',teacher:'Enseignant',sem:'Semestre',year:'Année universitaire',reg:'Matricule',name:'Nom et prénom',abs:'Absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail /4',exam:'Examen /10',final:'Finale /20',session:'Séance',link:'Associer',choose:'Choisir',present:'Présence enregistrée',unknown:'Carte non associée',unsupported:'NFC non pris en charge',disabled:'NFC désactivé'},en:{title:'Student Follow-up Card',new:'New card',import:'Import Excel',pdf:'Export PDF',save:'Save',students:'Students',add:'Add student',scan:'Scan NFC',course:'Course',level:'Level',dept:'Department',spec:'Specialty',group:'Group',teacher:'Teacher',sem:'Semester',year:'Academic year',reg:'Registration No.',name:'Name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Exam /10',final:'Final /20',session:'Session',link:'Link card',choose:'Select student',present:'Attendance recorded',unknown:'Card not linked',unsupported:'NFC unsupported',disabled:'NFC disabled'}};
@@ -32,7 +32,7 @@ function welcome(){return`<section class="welcome"><h1>${tr('title')}</h1><p>${U
 function editor(c){
  const present=c.students.filter(s=>s.attendance?.[c.session]==='P').length;
  return `<section class="stats"><div><b>${c.students.length}</b><span>${tr('students')}</span></div><div><b>${c.students.filter(s=>s.nfc).length}</b><span>NFC</span></div><div><b>${present}</b><span>${tr('present')}</span></div><div><b>${c.students.filter(s=>s.attendance?.[c.session]==='A').length}</b><span>${tr('abs')}</span></div><div><b>${c.students.filter(s=>s.attendance?.[c.session]==='E').length}</b><span>م</span></div></section>
- <section class="toolbar"><button id="save">${tr('save')}</button><button id="pickExcel">📥 ${tr('import')}</button><input id="excel" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none"><button id="pdf">${tr('pdf')}</button><button id="scan">📡 ${tr('scan')}</button><button id="link">${tr('link')}</button></section>
+ <section class="cardsbar"><b>📚 البطاقات</b><select id="cardSelect">${data.cards.map(x=>`<option value="${x.id}" ${x.id===c.id?'selected':''}>${esc([x.course,x.specialty,x.group].filter(Boolean).join(' — ')||tr('new'))}</option>`).join('')}</select><button id="new2">＋ ${tr('new')}</button></section><section class="toolbar"><button id="save">${tr('save')}</button><button id="pickExcel">📥 ${tr('import')}</button><input id="excel" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none"><button id="pdf">${tr('pdf')}</button><button id="scan">📡 ${tr('scan')}</button><button id="link">${tr('link')}</button></section>
  <section class="cardform"><div class="fields">${field('department',tr('dept'),c.department)}${field('course',tr('course'),c.course)}${field('level',tr('level'),c.level)}${field('specialty',tr('spec'),c.specialty)}${field('group',tr('group'),c.group)}${field('teacher',tr('teacher'),c.teacher)}${field('semester',tr('sem'),c.semester)}${field('year',tr('year'),c.year)}</div></section>
  <section class="sessions"><b>${tr('session')}</b><select id="session" class="current-session">${c.sessions.map((d,i)=>`<option value="${i}" ${c.session===i?'selected':''}>ح${i+1} ${d||''}</option>`).join('')}</select><div class="sessiongrid">${c.sessions.map((d,i)=>`<label>ح${i+1}<input data-date="${i}" type="date" value="${d}"></label>`).join('')}</div></section>
  <section class="tablewrap"><button id="add">＋ ${tr('add')}</button><table><thead><tr><th>${tr('reg')}</th><th>${tr('name')}</th>${c.sessions.map((_,i)=>`<th>ح${i+1}</th>`).join('')}<th>${tr('abs')}</th><th>${tr('conduct')}</th><th>${tr('part')}</th><th>${tr('work')}</th><th>${tr('exam')}</th><th>${tr('final')}</th><th>NFC</th><th></th></tr></thead><tbody>${c.students.map((st,i)=>row(st,i,c)).join('')}</tbody></table></section>`;
@@ -41,6 +41,8 @@ function field(id,l,v){return`<label>${l}<input id="${id}" value="${esc(v)}"></l
 function row(s,i,c){return`<tr><td><input data-s="${i}" data-k="reg" value="${esc(s.reg)}"></td><td><input data-s="${i}" data-k="name" value="${esc(s.name)}"></td>${c.sessions.map((_,j)=>`<td><select data-s="${i}" data-a="${j}"><option value="">—</option><option ${s.attendance?.[j]==='P'?'selected':''} value="P">✓</option><option ${s.attendance?.[j]==='A'?'selected':''} value="A">غ</option><option ${s.attendance?.[j]==='E'?'selected':''} value="E">م</option></select></td>`).join('')}<td>${s.attendance?.filter(x=>x==='A').length||0}</td><td><input data-s="${i}" data-k="conduct" type="number" max="3" value="${s.conduct||''}"></td><td><input data-s="${i}" data-k="part" type="number" max="3" value="${s.part||''}"></td><td><input data-s="${i}" data-k="work" type="number" max="4" value="${s.work||''}"></td><td><input data-s="${i}" data-k="exam" type="number" max="10" value="${s.exam||''}"></td><td data-total>${total(s).toFixed(2)}</td><td>${s.nfc?'✓':'—'}</td><td><button class="danger" data-del="${i}">×</button></td></tr>`}
 function wire(c){
  document.querySelector('#save').onclick=()=>{bind(c);toast(tr('save'))};
+ document.querySelector('#cardSelect').onchange=e=>{bind(c);data.active=e.target.value;save();render()};
+ document.querySelector('#new2').onclick=newCard;
  document.querySelector('#add').onclick=()=>{c.students.push({reg:'',name:'',attendance:Array(14).fill(''),conduct:'',part:'',work:'',exam:'',nfc:''});save();render()};
  const picker=document.querySelector('#pickExcel'), input=document.querySelector('#excel');
  picker.onclick=()=>input.click();
@@ -68,7 +70,9 @@ async function importExcel(e,c){
   // ملف الجامعة: السطر 1 عنوان الملف، السطر 2 رؤوس الأعمدة، ثم بيانات الطلبة.
   const headerIndex=matrix.findIndex((row,i)=>i<8 && row.some(v=>['matricule','رقمالتسجيل','nom','prenom','اللقب','الاسم','note'].includes(norm(v))));
   const h=headerIndex>=0?headerIndex:0;
-  const headers=(matrix[h]||[]).map((v,i)=>String(v??'').trim()||('COL'+i));
+  const rawHeader=(matrix[h]||[]).map(v=>String(v??'').trim());
+  const isUniversityTemplate=rawHeader.length>=9 && norm(rawHeader[0])==='matricule' && norm(rawHeader[1])==='nom' && norm(rawHeader[2])==='prenom';
+  const headers=isUniversityTemplate?['matricule','nom','prenom','note','absent','absencejustifiee','observation','section','groupe']:rawHeader.map((v,i)=>v||('COL'+i));
   const rows=matrix.slice(h+1).map(row=>{const o={};headers.forEach((k,i)=>o[k]=row[i]??'');return o}).filter(r=>Object.values(r).some(v=>String(v).trim()));
 
   const aliases={
@@ -111,6 +115,13 @@ async function importExcel(e,c){
    let name=value(r,'name');
    if(!name){const l=value(r,'last'),f2=value(r,'first');name=[l,f2].filter(Boolean).join(' / ')}
    const uid=value(r,'nfc').toUpperCase().replace(/[^0-9A-F]/g,'');
+   if(isUniversityTemplate){
+     const cells=Object.values(r).map(v=>String(v??'').trim());
+     const positionalReg=cells[0]||'';
+     const positionalName=[cells[1]||'',cells[2]||''].filter(Boolean).join(' / ');
+     if(!reg) reg=positionalReg;
+     if(!name) name=positionalName;
+   }
    const group=value(r,'group'),level=value(r,'level'),spec=value(r,'spec');
    const note=value(r,'note'),absent=value(r,'absent'),justified=value(r,'justified'),observation=value(r,'observation'),section=value(r,'section');
    if(!reg&&!name){skipped++;continue}
