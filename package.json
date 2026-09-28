@@ -1,6 +1,6 @@
 {
   "name": "student-followup-blida2",
-  "version": "3.5.1",
+  "version": "3.6.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,8 +13,6 @@
     "@capacitor/filesystem": "^8.0.0",
     "@capacitor/share": "^8.0.0",
     "@capgo/capacitor-nfc": "^8.2.2",
-    "jspdf": "^3.0.3",
-    "jspdf-autotable": "^5.0.2",
     "xlsx": "^0.18.5",
     "@capawesome/capacitor-file-picker": "^8.1.0",
     "docx": "^9.5.1"
