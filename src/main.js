@@ -232,27 +232,104 @@ async function deliverFile(blob,filename,mime){
  const base64=await blobToBase64(blob);const saved=await Filesystem.writeFile({path:filename,data:base64,directory:Directory.Cache});await Share.share({title:filename,url:saved.uri});
 }
 async function makeWord(c){
- const L={ar:{title:'بطاقة متابعة الطلبة',faculty:'كلية العلوم الإنسانية والاجتماعية',dept:'قسم علم الاجتماع وعلم السكان',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'عدد الغيابات',conduct:'علامة المواظبة والسلوك /3',part:'علامة المشاركة /3',work:'علامة العمل الشخصي /4',exam:'علامة الامتحان /10',finale:'العالمة النهائية /20',course:'المقياس',level:'المستوى',department:'القسم',specialty:'التخصص',group:'الفوج',teacher:'الأستاذ',semester:'السداسي',year:'الموسم الجامعي',sessions:'تاريخ الحصص'},fr:{title:'Fiche de suivi des étudiants',faculty:'Faculté des sciences humaines et sociales',dept:'Département de sociologie et de démographie',reg:'Matricule',name:'Nom et prénom',abs:'Nombre d’absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail personnel /4',exam:'Évaluation /10',finale:'Note finale /20',course:'Module',level:'Niveau',department:'Département',specialty:'Spécialité',group:'Groupe',teacher:'Enseignant',semester:'Semestre',year:'Année universitaire',sessions:'Dates des séances'},en:{title:'Student Follow-up Card',faculty:'Faculty of Humanities and Social Sciences',dept:'Department of Sociology and Demography',reg:'Registration No.',name:'Student name',abs:'Number of absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Assessment /10',finale:'Final grade /20',course:'Course',level:'Level',department:'Department',specialty:'Specialty',group:'Group',teacher:'Teacher',semester:'Semester',year:'Academic year',sessions:'Session dates'}}[lang];
- const rtl=lang==='ar', logo=await fetchAssetBytes('/university-logo.jpg'), barcode=await barcodePngBytes(cardBarcodeValue(c));
- const run=(v,o={})=>new TextRun({text:String(v??'—'),font:'Arial',size:o.size||18,bold:!!o.bold,rtl});
+ const L={ar:{title:'بطاقة متابعة الطلبة',faculty:'كلية العلوم الإنسانية والاجتماعية',dept:'قسم علم الاجتماع وعلم السكان',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'عدد الغيابات',conduct:'علامة المواظبة والسلوك /3',part:'علامة المشاركة /3',work:'علامة العمل الشخصي /4',exam:'التقييم /10',finale:'العلامة النهائية /20',course:'المقياس',level:'المستوى',department:'القسم',specialty:'التخصص',group:'الفوج',teacher:'الأستاذ',semester:'السداسي',year:'الموسم الجامعي',sessions:'تاريخ الحصص',note:'ملاحظة'},fr:{title:'Fiche de suivi des étudiants',faculty:'Faculté des sciences humaines et sociales',dept:'Département de sociologie et de démographie',reg:'Matricule',name:'Nom et prénom',abs:'Nombre d’absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail personnel /4',exam:'Évaluation /10',finale:'Note finale /20',course:'Module',level:'Niveau',department:'Département',specialty:'Spécialité',group:'Groupe',teacher:'Enseignant',semester:'Semestre',year:'Année universitaire',sessions:'Dates des séances',note:'Note'},en:{title:'Student Follow-up Card',faculty:'Faculty of Humanities and Social Sciences',dept:'Department of Sociology and Demography',reg:'Registration No.',name:'Student name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Assessment /10',finale:'Final grade /20',course:'Course',level:'Level',department:'Department',specialty:'Specialty',group:'Group',teacher:'Teacher',semester:'Semester',year:'Academic year',sessions:'Session dates',note:'Note'}}[lang];
+ const rtl=lang==='ar';
+ const logo=await fetchAssetBytes('/university-logo.jpg');
+ const barcode=await barcodePngBytes(cardBarcodeValue(c));
+
+ // A4 landscape printable area: 16838 - 600 = 16238 DXA.
+ // The previous export used >22,000 DXA, which caused Word to clip/overflow columns.
+ const W=[1050,2450,...Array(14).fill(520),700,700,700,700,700,700];
+ const totalW=W.reduce((x,y)=>x+y,0); // 14250 DXA
+ const run=(v,o={})=>new TextRun({text:String(v??'—'),font:'Arial',size:o.size||16,bold:!!o.bold,rtl});
  const para=(v,o={})=>new Paragraph({children:[run(v,o)],alignment:o.align||(rtl?AlignmentType.RIGHT:AlignmentType.LEFT),bidirectional:rtl,spacing:{after:0,before:0}});
  const imgPara=(im,a=AlignmentType.CENTER)=>new Paragraph({children:[im],alignment:a,spacing:{after:0,before:0}});
- const cell=(v,w=900,o={})=>new TableCell({width:{size:w,type:WidthType.DXA},children:[para(v,{bold:!!o.bold,size:o.size||11,align:rtl?AlignmentType.RIGHT:AlignmentType.LEFT})]});
+ const cell=(v,w,i,{bold=false,size=9,center=false}={})=>new TableCell({
+   width:{size:w,type:WidthType.DXA},
+   margins:{top:45,bottom:45,left:35,right:35},
+   children:[para(v,{bold,size,align:center?AlignmentType.CENTER:(rtl?AlignmentType.RIGHT:AlignmentType.LEFT)})]
+ });
  const meta=[[L.course,c.course,L.level,c.level],[L.department,c.department,L.specialty,c.specialty],[L.group,c.group,L.teacher,c.teacher],[L.semester,c.semester,L.year,c.year]];
- const metaTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:meta.map(a=>new TableRow({children:(rtl?[...a].reverse():a).map((v,i)=>cell(v,i%2===0?1500:2900,{bold:i%2===0,size:11}))})),columnWidths:[1500,2900,1500,2900]});
+ const metaWidths=[1450,2600,1450,2600];
+ const metaTable=new Table({
+   width:{size:8100,type:WidthType.DXA},
+   alignment:AlignmentType.CENTER,
+   rows:meta.map(a=>new TableRow({children:(rtl?[a[2],a[3],a[0],a[1]]:a).map((v,i)=>cell(v,metaWidths[i],i,{bold:i%2===0,size:10}) )}))
+ });
  const headers=[L.reg,L.name,...c.sessions.map((_,i)=>rtl?'ح'+(i+1):'S'+(i+1)),L.abs,L.conduct,L.part,L.work,L.exam,L.finale];
  const dates=['','',...c.sessions.map(d=>d||''),'','','','','','',''];
- const makeRow=a=>new TableRow({children:(rtl?[...a].reverse():a).map((v,i)=>cell(v,i===0?1400:(i===1?3000:760),{bold:true,size:9}))});
- const rows=[makeRow(headers),makeRow(dates)];
- for(const st of c.students){const vals=[st.reg,displayName(st),...c.sessions.map((_,i)=>st.attendance?.[i]==='P'?'✓':st.attendance?.[i]==='A'?(rtl?'غ':'A'):st.attendance?.[i]==='E'?(rtl?'م':'E'):''),st.attendance?.filter(x=>x==='A').length||0,st.conduct||'',st.part||'',st.work||'',st.exam||'',total(st).toFixed(2)];rows.push(new TableRow({children:(rtl?[...vals].reverse():vals).map((v,i)=>cell(v,i===0?1400:(i===1?3000:760),{size:9}))}));}
- const studentTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},rows,columnWidths:[1400,3000,...Array(14).fill(760),900,1050,1050,1050,1050,1050]});
- const logoRun=new ImageRun({type:'jpg',data:logo,transformation:{width:70,height:70}}), barcodeRun=new ImageRun({type:'png',data:barcode,transformation:{width:190,height:62}});
- const headCells=rtl?[new TableCell({width:{size:9000,type:WidthType.DXA},children:[para(UNI[lang],{bold:true,size:22,align:AlignmentType.CENTER}),para(L.faculty,{size:14,align:AlignmentType.CENTER}),para(L.dept,{size:14,align:AlignmentType.CENTER}),para(L.title,{bold:true,size:18,align:AlignmentType.CENTER})]}),new TableCell({width:{size:1500,type:WidthType.DXA},children:[imgPara(logoRun)]})]:[new TableCell({width:{size:1500,type:WidthType.DXA},children:[imgPara(logoRun)]}),new TableCell({width:{size:9000,type:WidthType.DXA},children:[para(UNI[lang],{bold:true,size:22,align:AlignmentType.CENTER}),para(L.faculty,{size:14,align:AlignmentType.CENTER}),para(L.dept,{size:14,align:AlignmentType.CENTER}),para(L.title,{bold:true,size:18,align:AlignmentType.CENTER})]})];
- const titleTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:[new TableRow({children:headCells})]});
- const barcodeTable=new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:[new TableRow({children:[new TableCell({width:{size:9000,type:WidthType.DXA},children:[para('')]}),new TableCell({width:{size:1800,type:WidthType.DXA},children:[imgPara(barcodeRun,rtl?AlignmentType.LEFT:AlignmentType.RIGHT)]})]})]});
- const doc=new Document({styles:{default:{document:{run:{font:'Arial',size:18}}}},sections:[{properties:{page:{size:{width:16838,height:11906,orientation:'landscape'},margin:{top:300,right:300,bottom:300,left:300}}},children:[titleTable,new Paragraph({children:[],spacing:{after:20}}),barcodeTable,metaTable,new Paragraph({children:[],spacing:{after:20}}),studentTable,para(rtl?'ملاحظة: العلامة النهائية هي مجموع المواظبة والسلوك والمشاركة والعمل الشخصي والامتحان.':lang==='fr'?'Note : la note finale est la somme de l’assiduité, de la participation, du travail personnel et de l’évaluation.':'Note: the final grade is the sum of conduct, participation, personal work and assessment.',{size:9}),para((rtl?'كود البطاقة: ':lang==='fr'?'Code de la fiche : ':'Card code: ')+cardBarcodeValue(c),{size:8})]}]});
- const blob=await Packer.toBlob(doc),safe=(c.course||'student-follow-up').replace(/[\\/:*?"<>|]/g,'-').slice(0,80),filename=(lang==='ar'?'بطاقة-متابعة-':lang==='fr'?'Fiche-suivi-':'Student-Follow-Up-')+safe+'.docx';
- await deliverFile(blob,filename,'application/vnd.openxmlformats-officedocument.wordprocessingml.document');toast(tr('word'));
+ const ordered=a=>rtl?[...a].reverse():a;
+ const makeHeaderRow=a=>new TableRow({children:ordered(a).map((v,i)=>{
+   const logicalIndex=rtl?a.length-1-i:i;
+   return cell(v,W[logicalIndex],logicalIndex,{bold:true,size:8,center:true});
+ })});
+ const makeDataRow=a=>new TableRow({children:ordered(a).map((v,i)=>{
+   const logicalIndex=rtl?a.length-1-i:i;
+   return cell(v,W[logicalIndex],logicalIndex,{size:8,center:true});
+ })});
+ const rows=[makeHeaderRow(headers),makeDataRow(dates)];
+ for(const st of c.students){
+   const vals=[st.reg,displayName(st),
+     ...c.sessions.map((_,i)=>st.attendance?.[i]==='P'?'✓':st.attendance?.[i]==='A'?(rtl?'غ':'A'):st.attendance?.[i]==='E'?(rtl?'م':'E'):''),
+     st.attendance?.filter(x=>x==='A').length||0,st.conduct||'',st.part||'',st.work||'',st.exam||'',total(st).toFixed(2)];
+   rows.push(makeDataRow(vals));
+ }
+ const studentTable=new Table({
+   width:{size:totalW,type:WidthType.DXA},
+   alignment:AlignmentType.CENTER,
+   rows,
+   columnWidths:W
+ });
+
+ const logoRun=new ImageRun({type:'jpg',data:logo,transformation:{width:62,height:62}});
+ const barcodeRun=new ImageRun({type:'png',data:barcode,transformation:{width:150,height:49}});
+ const headerLeft=new TableCell({width:{size:1450,type:WidthType.DXA},children:[imgPara(logoRun)]});
+ const headerText=new TableCell({width:{size:10000,type:WidthType.DXA},children:[
+   para(UNI[lang],{bold:true,size:19,align:AlignmentType.CENTER}),
+   para(L.faculty,{size:11,align:AlignmentType.CENTER}),
+   para(L.dept,{size:11,align:AlignmentType.CENTER}),
+   para(L.title,{bold:true,size:15,align:AlignmentType.CENTER})
+ ]});
+ const headerCells=rtl?[headerText,headerLeft]:[headerLeft,headerText];
+ const titleTable=new Table({width:{size:11450,type:WidthType.DXA},alignment:AlignmentType.CENTER,rows:[new TableRow({children:headerCells})]});
+ const barcodeTable=new Table({
+   width:{size:totalW,type:WidthType.DXA},alignment:AlignmentType.CENTER,
+   rows:[new TableRow({children:[
+     new TableCell({width:{size:totalW-1900,type:WidthType.DXA},children:[para('')]}),
+     new TableCell({width:{size:1900,type:WidthType.DXA},children:[imgPara(barcodeRun,rtl?AlignmentType.LEFT:AlignmentType.RIGHT)]})
+   ]})]
+ });
+ const notes=rtl
+   ? 'ملاحظة: علامة الامتحان لا تزيد عن /10، والعلامة النهائية هي حصيلة مجموع العلامات. تُحتسب الغيابات وفق النظام المعتمد.'
+   : lang==='fr'
+   ? 'Note : l’évaluation est sur 10 et la note finale correspond à la somme des notes renseignées. Les absences sont comptabilisées selon le règlement en vigueur.'
+   : 'Note: assessment is out of 10 and the final grade is the sum of the entered grades. Absences are counted according to the applicable regulations.';
+
+ const doc=new Document({
+   styles:{default:{document:{run:{font:'Arial',size:16}}}},
+   sections:[{
+     properties:{page:{size:{width:16838,height:11906,orientation:'landscape'},margin:{top:250,right:300,bottom:250,left:300}}},
+     children:[
+       titleTable,
+       new Paragraph({children:[],spacing:{after:25,before:0}}),
+       barcodeTable,
+       new Paragraph({children:[],spacing:{after:20,before:0}}),
+       metaTable,
+       para(L.sessions,{bold:true,size:10,align:rtl?AlignmentType.RIGHT:AlignmentType.LEFT}),
+       para(c.sessions.map((d,i)=>'ح'+(i+1)+': '+(d||'—')).join('   |   '),{size:9,align:rtl?AlignmentType.RIGHT:AlignmentType.LEFT}),
+       new Paragraph({children:[],spacing:{after:20,before:0}}),
+       studentTable,
+       new Paragraph({children:[],spacing:{after:10,before:0}}),
+       para(notes,{size:8,align:rtl?AlignmentType.RIGHT:AlignmentType.LEFT}),
+       para((rtl?'رمز البطاقة: ':lang==='fr'?'Code de la fiche : ':'Card code: ')+cardBarcodeValue(c),{size:7,align:rtl?AlignmentType.RIGHT:AlignmentType.LEFT})
+     ]
+   }]
+ });
+ const blob=await Packer.toBlob(doc);
+ const safe=(c.course||'student-follow-up').replace(/[\\/:*?"<>|]/g,'-').slice(0,80);
+ const filename=(lang==='ar'?'بطاقة-متابعة-':lang==='fr'?'Fiche-suivi-':'Student-Follow-Up-')+safe+'.docx';
+ await deliverFile(blob,filename,'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+ toast(tr('word'));
 }
 async function exportArchive(){const archive={format:'StudentFollowUpArchive',version:VERSION,university:UNI,language:lang,exportedAt:new Date().toISOString(),cards:data.cards};const blob=new Blob([JSON.stringify(archive,null,2)],{type:'application/json;charset=utf-8'});const filename='StudentFollowUp-Blida2-Archive-'+new Date().toISOString().slice(0,10)+'.json';await deliverFile(blob,filename,'application/json');toast(tr('archive'))}
 function deleteAllData(){const msg=lang==='ar'?'سيتم حذف جميع البطاقات والطلبة والربط ببطاقات NFC من هذا الهاتف. لا يمكن التراجع عن العملية. هل تريد المتابعة؟':lang==='fr'?'Toutes les fiches, étudiants et associations NFC seront supprimés de cet appareil. Cette action est irréversible. Continuer ?':'All cards, students and NFC associations will be deleted from this device. This cannot be undone. Continue?';if(!confirm(msg))return;if(!confirm(lang==='ar'?'تأكيد نهائي: حذف كل البيانات؟':lang==='fr'?'Confirmation finale : supprimer toutes les données ?':'Final confirmation: delete all data?'))return;data={cards:[],active:null};save();render();toast(lang==='ar'?'تم حذف جميع البيانات':lang==='fr'?'Toutes les données ont été supprimées':'All data deleted')}
