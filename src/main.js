@@ -28,7 +28,13 @@ function render(){
  document.querySelectorAll('[data-id]').forEach(x=>x.onclick=()=>{data.active=x.dataset.id;save();render()});
  if(c) wire(c);
 }
-function showCards(){\n const m=document.createElement('div');m.className='modal';\n m.innerHTML=`<div class="modal-card cards-modal"><h2>📚 ${lang==='ar'?'بطاقاتي':lang==='fr'?'Mes fiches':'My cards'}</h2><div class="my-cards-list">${data.cards.map(x=>`<button class="my-card-item" data-card="${x.id}">${esc([x.course,x.specialty,x.group].filter(Boolean).join(' — ')||tr('new'))}</button>`).join('')}</div><button id="closeCards">إغلاق</button></div>`;\n document.body.appendChild(m);m.querySelector('#closeCards').onclick=()=>m.remove();\n m.querySelectorAll('[data-card]').forEach(b=>b.onclick=()=>{data.active=b.dataset.card;save();m.remove();render()});\n}\nfunction welcome(){return`<section class="welcome"><h1>${tr('title')}</h1><p>${U}</p><button class="big" id="create">＋ ${tr('new')}</button><div class="saved">${data.cards.map(c=>`<p><button data-id="${c.id}">${esc(c.course||tr('new'))} — ${esc(c.group)}</button></p>`).join('')}</div></section>`}
+function showCards(){
+ const m=document.createElement('div');m.className='modal';
+ m.innerHTML=`<div class="modal-card cards-modal"><h2>📚 ${lang==='ar'?'بطاقاتي':lang==='fr'?'Mes fiches':'My cards'}</h2><div class="my-cards-list">${data.cards.map(x=>`<button class="my-card-item" data-card="${x.id}">${esc([x.course,x.specialty,x.group].filter(Boolean).join(' — ')||tr('new'))}</button>`).join('')}</div><button id="closeCards">إغلاق</button></div>`;
+ document.body.appendChild(m);m.querySelector('#closeCards').onclick=()=>m.remove();
+ m.querySelectorAll('[data-card]').forEach(b=>b.onclick=()=>{data.active=b.dataset.card;save();m.remove();render()});
+}
+function welcome(){return`<section class="welcome"><h1>${tr('title')}</h1><p>${U}</p><button class="big" id="create">＋ ${tr('new')}</button><div class="saved">${data.cards.map(c=>`<p><button data-id="${c.id}">${esc(c.course||tr('new'))} — ${esc(c.group)}</button></p>`).join('')}</div></section>`}
 function editor(c){
  const present=c.students.filter(s=>s.attendance?.[c.session]==='P').length;
  return `<section class="stats"><div><b>${c.students.length}</b><span>${tr('students')}</span></div><div><b>${c.students.filter(s=>s.nfc).length}</b><span>NFC</span></div><div><b>${present}</b><span>${tr('present')}</span></div><div><b>${c.students.filter(s=>s.attendance?.[c.session]==='A').length}</b><span>${tr('abs')}</span></div><div><b>${c.students.filter(s=>s.attendance?.[c.session]==='E').length}</b><span>م</span></div></section>
