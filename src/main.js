@@ -5,7 +5,7 @@ import {Filesystem,Directory} from '@capacitor/filesystem';
 import {Share} from '@capacitor/share';
 import {CapacitorNfc} from '@capgo/capacitor-nfc';
 import {FilePicker} from '@capawesome/capacitor-file-picker';
-import {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,WidthType,AlignmentType,ImageRun,Footer} from 'docx';
+import {Document,Packer,Paragraph,Table,TableRow,TableCell,TextRun,WidthType,AlignmentType,ImageRun,Footer,TableLayoutType} from 'docx';
 import JsBarcode from 'jsbarcode';
 
 const U='جامعة البليدة 2 لونيسي علي', UNI={ar:'جامعة البليدة 2 لونيسي علي',fr:'Université de Blida 2 Lounici Ali',en:'University of Blida 2 Lounici Ali'}, KEY='student_followup_v3', VERSION='3.12.0';
@@ -251,8 +251,8 @@ async function makeWord(c){
 
  // A4 landscape printable area: 16838 - 600 = 16238 DXA.
  // The previous export used >22,000 DXA, which caused Word to clip/overflow columns.
- const W=[1000,2200,...Array(14).fill(500),750,750,750,750,750,750];
- const totalW=W.reduce((x,y)=>x+y,0); // 14980 DXA
+ const W=[900,2200,...Array(14).fill(400),650,750,750,750,750,1000];
+ const totalW=W.reduce((x,y)=>x+y,0); // 14100 DXA — final grade gets a dedicated 1000 DXA column
  const run=(v,o={})=>new TextRun({text:String(v??'—'),font:'Arial',size:o.size||16,bold:!!o.bold,rtl});
  const para=(v,o={})=>new Paragraph({children:[run(v,o)],alignment:o.align||(rtl?AlignmentType.RIGHT:AlignmentType.LEFT),bidirectional:rtl,spacing:{after:0,before:0}});
  const imgPara=(im,a=AlignmentType.CENTER)=>new Paragraph({children:[im],alignment:a,spacing:{after:0,before:0}});
@@ -273,11 +273,11 @@ async function makeWord(c){
  const ordered=a=>rtl?[...a].reverse():a;
  const makeHeaderRow=a=>new TableRow({children:ordered(a).map((v,i)=>{
    const logicalIndex=rtl?a.length-1-i:i;
-   return cell(v,W[logicalIndex],logicalIndex,{bold:true,size:8,center:true});
+   return cell(v,W[logicalIndex],logicalIndex,{bold:true,size:logicalIndex===21?9:8,center:true});
  })});
  const makeDataRow=a=>new TableRow({children:ordered(a).map((v,i)=>{
    const logicalIndex=rtl?a.length-1-i:i;
-   return cell(v,W[logicalIndex],logicalIndex,{size:8,center:true});
+   return cell(v,W[logicalIndex],logicalIndex,{size:logicalIndex===21?9:8,bold:logicalIndex===21,center:true});
  })});
  const rows=[makeHeaderRow(headers),makeDataRow(dates)];
  for(const st of c.students){
@@ -290,7 +290,8 @@ async function makeWord(c){
    width:{size:totalW,type:WidthType.DXA},
    alignment:AlignmentType.CENTER,
    rows,
-   columnWidths:W
+   columnWidths:W,
+   layout:TableLayoutType.FIXED
  });
 
  const logoRun=logo?new ImageRun({type:'png',data:logo,transformation:{width:125,height:125}}):null;
