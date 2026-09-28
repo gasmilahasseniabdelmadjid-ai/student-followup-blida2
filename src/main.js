@@ -79,7 +79,7 @@ function wire(c){
   }catch(err){if(err?.message&&/cancel|dismiss|canceled|cancelled/i.test(err.message))return;alert('تعذر اختيار ملف Excel: '+(err?.message||err))}
  };
  input.onchange=e=>importExcel(e,c);
- document.querySelector('#word').onclick=()=>{bind(c);makeWord(c)};
+ document.querySelector('#word').onclick=async()=>{bind(c);try{await makeWord(c)}catch(err){console.error('Word export failed',err);alert((lang==='ar'?'تعذر تصدير بطاقة Word: ':lang==='fr'?'Échec de l’export Word : ':'Word export failed: ')+(err?.message||String(err)))}};
  document.querySelector('#archive').onclick=()=>exportArchive();
  document.querySelector('#deleteAll').onclick=()=>deleteAllData();
  document.querySelector('#session').onchange=e=>{c.session=+e.target.value;save();render()};
@@ -228,14 +228,25 @@ async function stopNfc(m){try{await CapacitorNfc.stopScanning();if(nfcListener)a
 
 function blobToBase64(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(blob)})}
 async function deliverFile(blob,filename,mime){
- if(Capacitor.getPlatform()==='web'){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);return}
- const base64=await blobToBase64(blob);const saved=await Filesystem.writeFile({path:filename,data:base64,directory:Directory.Cache});await Share.share({title:filename,url:saved.uri});
+ if(!blob||blob.size===0)throw new Error('تم إنشاء ملف Word فارغ');
+ if(Capacitor.getPlatform()==='web'){
+   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();
+   setTimeout(()=>URL.revokeObjectURL(a.href),1500);return;
+ }
+ const base64=await blobToBase64(blob);
+ const safeName=(filename||'Student-Follow-Up.docx').replace(/[\\/:*?"<>|]/g,'-');
+ const saved=await Filesystem.writeFile({path:safeName,data:base64,directory:Directory.Cache,recursive:true});
+ if(!saved?.uri)throw new Error('تعذر حفظ ملف Word على الهاتف');
+ const canShare=await Share.canShare().catch(()=>({value:true}));
+ if(canShare?.value===false)throw new Error('المشاركة غير متاحة على هذا الهاتف');
+ await Share.share({title:safeName,url:saved.uri,dialogTitle:lang==='ar'?'مشاركة بطاقة Word':lang==='fr'?'Partager la fiche Word':'Share Word card'});
 }
 async function makeWord(c){
  const L={ar:{title:'بطاقة متابعة الطلبة',faculty:'كلية العلوم الإنسانية والاجتماعية',dept:'قسم علم الاجتماع وعلم السكان',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'عدد الغيابات',conduct:'علامة المواظبة والسلوك /3',part:'علامة المشاركة /3',work:'علامة العمل الشخصي /4',exam:'التقييم /10',finale:'العلامة النهائية /20',course:'المقياس',level:'المستوى',department:'القسم',specialty:'التخصص',group:'الفوج',teacher:'الأستاذ',semester:'السداسي',year:'الموسم الجامعي',sessions:'تاريخ الحصص',note:'ملاحظة'},fr:{title:'Fiche de suivi des étudiants',faculty:'Faculté des sciences humaines et sociales',dept:'Département de sociologie et de démographie',reg:'Matricule',name:'Nom et prénom',abs:'Nombre d’absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail personnel /4',exam:'Évaluation /10',finale:'Note finale /20',course:'Module',level:'Niveau',department:'Département',specialty:'Spécialité',group:'Groupe',teacher:'Enseignant',semester:'Semestre',year:'Année universitaire',sessions:'Dates des séances',note:'Note'},en:{title:'Student Follow-up Card',faculty:'Faculty of Humanities and Social Sciences',dept:'Department of Sociology and Demography',reg:'Registration No.',name:'Student name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Assessment /10',finale:'Final grade /20',course:'Course',level:'Level',department:'Department',specialty:'Specialty',group:'Group',teacher:'Teacher',semester:'Semester',year:'Academic year',sessions:'Session dates',note:'Note'}}[lang];
  const rtl=lang==='ar';
- const logo=await fetchAssetBytes('/university-logo.jpg');
- const barcode=await barcodePngBytes(cardBarcodeValue(c));
+ let logo=null,barcode=null;
+ try{logo=await fetchAssetBytes('/university-logo.jpg')}catch(err){console.warn('University logo unavailable',err)}
+ try{barcode=await barcodePngBytes(cardBarcodeValue(c))}catch(err){console.warn('Barcode unavailable',err)}
 
  // A4 landscape printable area: 16838 - 600 = 16238 DXA.
  // The previous export used >22,000 DXA, which caused Word to clip/overflow columns.
@@ -281,9 +292,9 @@ async function makeWord(c){
    columnWidths:W
  });
 
- const logoRun=new ImageRun({type:'jpg',data:logo,transformation:{width:62,height:62}});
- const barcodeRun=new ImageRun({type:'png',data:barcode,transformation:{width:150,height:49}});
- const headerLeft=new TableCell({width:{size:1450,type:WidthType.DXA},children:[imgPara(logoRun)]});
+ const logoRun=logo?new ImageRun({type:'jpg',data:logo,transformation:{width:62,height:62}}):null;
+ const barcodeRun=barcode?new ImageRun({type:'png',data:barcode,transformation:{width:150,height:49}}):null;
+ const headerLeft=new TableCell({width:{size:1450,type:WidthType.DXA},children:logoRun?[imgPara(logoRun)]:[para('')]});
  const headerText=new TableCell({width:{size:10000,type:WidthType.DXA},children:[
    para(UNI[lang],{bold:true,size:19,align:AlignmentType.CENTER}),
    para(L.faculty,{size:11,align:AlignmentType.CENTER}),
@@ -296,7 +307,7 @@ async function makeWord(c){
    width:{size:totalW,type:WidthType.DXA},alignment:AlignmentType.CENTER,
    rows:[new TableRow({children:[
      new TableCell({width:{size:totalW-1900,type:WidthType.DXA},children:[para('')]}),
-     new TableCell({width:{size:1900,type:WidthType.DXA},children:[imgPara(barcodeRun,rtl?AlignmentType.LEFT:AlignmentType.RIGHT)]})
+     new TableCell({width:{size:1900,type:WidthType.DXA},children:barcode?[imgPara(barcodeRun,rtl?AlignmentType.LEFT:AlignmentType.RIGHT)]:[para('')]})
    ]})]
  });
  const notes=rtl
@@ -326,6 +337,7 @@ async function makeWord(c){
    }]
  });
  const blob=await Packer.toBlob(doc);
+ if(!blob||blob.size<1000)throw new Error('تعذر إنشاء مستند Word صالح');
  const safe=(c.course||'student-follow-up').replace(/[\\/:*?"<>|]/g,'-').slice(0,80);
  const filename=(lang==='ar'?'بطاقة-متابعة-':lang==='fr'?'Fiche-suivi-':'Student-Follow-Up-')+safe+'.docx';
  await deliverFile(blob,filename,'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
