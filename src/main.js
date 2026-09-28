@@ -130,14 +130,20 @@ async function importExcel(e,c){
   let added=0,updated=0,skipped=0;
   for(const r of rows){
    let reg=value(r,'reg');
+   let last=value(r,'last');
+   let first=value(r,'first');
    let name=value(r,'name');
-   if(!name){const l=value(r,'last'),f2=value(r,'first');name=[l,f2].filter(Boolean).join(' / ')}
+   if(!name)name=[last,first].filter(Boolean).join(' / ');
    const uid=value(r,'nfc').toUpperCase().replace(/[^0-9A-F]/g,'');
    if(isUniversityTemplate){
      const cells=Object.values(r).map(v=>String(v??'').trim());
      const positionalReg=cells[0]||'';
-     const positionalName=[cells[1]||'',cells[2]||''].filter(Boolean).join(' / ');
+     const positionalLast=cells[1]||'';
+     const positionalFirst=cells[2]||'';
+     const positionalName=[positionalLast,positionalFirst].filter(Boolean).join(' / ');
      if(!reg) reg=positionalReg;
+     if(!last) last=positionalLast;
+     if(!first) first=positionalFirst;
      if(!name) name=positionalName;
    }
    const group=value(r,'group'),level=value(r,'level'),spec=value(r,'spec');
@@ -146,11 +152,11 @@ async function importExcel(e,c){
 
    let st=c.students.find(x=>reg&&String(x.reg).trim()===reg)||c.students.find(x=>name&&String(x.name).trim()===name);
    if(!st){
-     st={reg,name,group,level,specialty:spec,section,note,absent,justified,observation,
+     st={reg,name,last,first,group,level,specialty:spec,section,note,absent,justified,observation,
        attendance:Array(14).fill(''),conduct:'',part:'',work:'',exam:'',nfc:uid};
      c.students.push(st);added++;
    }else{
-     st.name=name||st.name; if(reg)st.reg=reg; if(uid)st.nfc=uid;
+     st.name=name||st.name; if(last)st.last=last; if(first)st.first=first; if(reg)st.reg=reg; if(uid)st.nfc=uid;
      if(group)st.group=group;if(level)st.level=level;if(spec)st.specialty=spec;
      if(section)st.section=section;if(note)st.note=note;if(absent)st.absent=absent;
      if(justified)st.justified=justified;if(observation)st.observation=observation;
@@ -209,10 +215,11 @@ async function makePDF(c){
  ];
  autoTable(d,{startY:34,body:meta,theme:'grid',styles:{font:'NotoNaskh',fontStyle:'normal',fontSize:7,halign:'right',cellPadding:1.2},columnStyles:{0:{cellWidth:24,fontStyle:'bold'},1:{cellWidth:63},2:{cellWidth:24,fontStyle:'bold'},3:{cellWidth:63},4:{cellWidth:24,fontStyle:'bold'},5:{cellWidth:63}},didParseCell:data=>{if(typeof data.cell.text==='string')data.cell.text=[cellText(data.cell.text)];else data.cell.text=data.cell.text.map(x=>cellText(x))}});
 
- const head=[[cellText('رقم التسجيل'),cellText('اللقب والاسم'),cellText('القسم'),cellText('الفوج'),...c.sessions.map((_,i)=>cellText('ح'+(i+1))),cellText('الغيابات'),cellText('المواظبة /3'),cellText('المشاركة /3'),cellText('العمل /4'),cellText('الامتحان /10'),cellText('النهائية /20')]];
+ const head=[[cellText('رقم التسجيل'),cellText('اللقب كما في Excel'),cellText('الاسم كما في Excel'),cellText('القسم'),cellText('الفوج'),...c.sessions.map((_,i)=>cellText('ح'+(i+1))),cellText('الغيابات'),cellText('المواظبة /3'),cellText('المشاركة /3'),cellText('العمل /4'),cellText('الامتحان /10'),cellText('النهائية /20')]];
  const body=c.students.map(st=>[
   String(st.reg||''),
-  cellText(st.name||[st.last,st.first].filter(Boolean).join(' / ')||'—'),
+  cellText(st.last||st.name||'—'),
+  cellText(st.first||'—'),
   cellText(st.section||c.department||'—'),
   cellText(st.group||c.group||'—'),
   ...c.sessions.map((_,i)=>st.attendance?.[i]==='P'?'✓':st.attendance?.[i]==='A'?cellText('غ'):st.attendance?.[i]==='E'?cellText('م'):''),
@@ -221,7 +228,7 @@ async function makePDF(c){
  ]);
 
  const tableY=(d.lastAutoTable?.finalY||34)+5;
- autoTable(d,{startY:tableY,head,body,theme:'grid',styles:{font:'NotoNaskh',fontStyle:'normal',fontSize:5.2,cellPadding:.65,halign:'center',overflow:'linebreak'},headStyles:{font:'NotoNaskh',fontStyle:'bold',fontSize:5.2},columnStyles:{0:{cellWidth:24},1:{cellWidth:34,halign:'right'},2:{cellWidth:18},3:{cellWidth:14}},didParseCell:data=>{if(Array.isArray(data.cell.text))data.cell.text=data.cell.text.map(x=>cellText(x));else data.cell.text=[cellText(data.cell.text)]}});
+ autoTable(d,{startY:tableY,head,body,theme:'grid',styles:{font:'NotoNaskh',fontStyle:'normal',fontSize:5.2,cellPadding:.65,halign:'center',overflow:'linebreak'},headStyles:{font:'NotoNaskh',fontStyle:'bold',fontSize:5.2},columnStyles:{0:{cellWidth:24},1:{cellWidth:34,halign:'right'},2:{cellWidth:34,halign:'right'},3:{cellWidth:18},4:{cellWidth:14}},didParseCell:data=>{if(Array.isArray(data.cell.text))data.cell.text=data.cell.text.map(x=>cellText(x));else data.cell.text=[cellText(data.cell.text)]}});
 
  const y=(d.lastAutoTable?.finalY||195)+5;
  d.setFontSize(7);d.text(cellText('ملاحظات: العلامة النهائية = المواظبة + المشاركة + العمل الشخصي + الامتحان.'),12,Math.min(y,202),{align:'left'});
