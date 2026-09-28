@@ -7,7 +7,7 @@ import {Filesystem,Directory} from '@capacitor/filesystem';
 import {Share} from '@capacitor/share';
 import {CapacitorNfc} from '@capgo/capacitor-nfc';
 
-const U='جامعة البليدة 2 لونيسي علي', KEY='student_followup_v3', VERSION='3.1.0';
+const U='جامعة البليدة 2 لونيسي علي', KEY='student_followup_v3', VERSION='3.2.0';
 const I=()=>({id:crypto.randomUUID(),course:'',level:'',department:'',specialty:'',group:'',teacher:'',semester:'',year:'2026/2027',session:0,sessions:Array.from({length:14},()=>''),students:[]});
 let data=load(),lang=localStorage.getItem('sfc_lang')||'ar',nfcListener=null,nfcMode='attendance';
 const T={ar:{title:'بطاقة متابعة الطلبة',new:'بطاقة جديدة',import:'استيراد Excel',pdf:'تصدير PDF',save:'حفظ',students:'الطلبة',add:'إضافة طالب',scan:'مسح NFC',course:'المقياس',level:'المستوى',dept:'القسم',spec:'التخصص',group:'الفوج',teacher:'الأستاذ',sem:'السداسي',year:'الموسم الجامعي',reg:'رقم التسجيل',name:'اللقب والاسم',abs:'الغيابات',conduct:'المواظبة /3',part:'المشاركة /3',work:'العمل الشخصي /4',exam:'الامتحان /10',final:'النهائية /20',session:'الحصة الحالية',link:'ربط البطاقة',choose:'اختر طالباً',present:'تم تسجيل الحضور',unknown:'البطاقة غير مرتبطة',unsupported:'NFC غير مدعوم',disabled:'NFC غير مفعّل'},fr:{title:'Fiche de suivi des étudiants',new:'Nouvelle fiche',importer:'Importer Excel',import:'Importer Excel',pdf:'Exporter PDF',save:'Enregistrer',students:'Étudiants',add:'Ajouter',scan:'Scanner NFC',course:'Module',level:'Niveau',dept:'Département',spec:'Spécialité',group:'Groupe',teacher:'Enseignant',sem:'Semestre',year:'Année universitaire',reg:'Matricule',name:'Nom et prénom',abs:'Absences',conduct:'Assiduité /3',part:'Participation /3',work:'Travail /4',exam:'Examen /10',final:'Finale /20',session:'Séance',link:'Associer',choose:'Choisir',present:'Présence enregistrée',unknown:'Carte non associée',unsupported:'NFC non pris en charge',disabled:'NFC désactivé'},en:{title:'Student Follow-up Card',new:'New card',import:'Import Excel',pdf:'Export PDF',save:'Save',students:'Students',add:'Add student',scan:'Scan NFC',course:'Course',level:'Level',dept:'Department',spec:'Specialty',group:'Group',teacher:'Teacher',sem:'Semester',year:'Academic year',reg:'Registration No.',name:'Name',abs:'Absences',conduct:'Conduct /3',part:'Participation /3',work:'Personal work /4',exam:'Exam /10',final:'Final /20',session:'Session',link:'Link card',choose:'Select student',present:'Attendance recorded',unknown:'Card not linked',unsupported:'NFC unsupported',disabled:'NFC disabled'}};
@@ -72,7 +72,7 @@ async function importExcel(e,c){
    spec:['التخصص','specialite','specialty'],
    nfc:['nfc','uid','nfcuid','rfid','rfiduid']
   };
-  const find=(keys,want)=>{const k=keys.find(x=>aliases[want]?.includes(norm(x)));return k??null};
+  const find=(keys,want)=>keys.find(x=>aliases[want]?.includes(norm(x)))??null;
   let added=0,updated=0;
   for(const r of rows){
    const keys=Object.keys(r);
@@ -80,10 +80,14 @@ async function importExcel(e,c){
    let name=String(r[find(keys,'name')]??'').trim();
    if(!name){const l=String(r[find(keys,'last')]??'').trim(),f2=String(r[find(keys,'first')]??'').trim();name=[l,f2].filter(Boolean).join(' ')}
    const uid=String(r[find(keys,'nfc')]??'').trim().toUpperCase().replace(/[^0-9A-F]/g,'');
+   const group=String(r[find(keys,'group')]??'').trim();
+   const level=String(r[find(keys,'level')]??'').trim();
+   const spec=String(r[find(keys,'spec')]??'').trim();
    if(!reg&&!name)continue;
    let st=c.students.find(x=>reg&&x.reg===reg)||c.students.find(x=>name&&x.name===name);
    if(st){st.name=name||st.name; if(reg)st.reg=reg; if(uid)st.nfc=uid; updated++}
-   else {c.students.push({reg,name,attendance:Array(14).fill(''),conduct:'',part:'',work:'',exam:'',nfc:uid});added++}
+   else {c.students.push({reg,name,group,level,specialty:spec,attendance:Array(14).fill(''),conduct:'',part:'',work:'',exam:'',nfc:uid});added++}
+   if(group&&!c.group)c.group=group; if(level&&!c.level)c.level=level; if(spec&&!c.specialty)c.specialty=spec;
   }
   save();render();toast(`${tr('import')}: +${added} / ${updated} `);
  }catch(err){alert('فشل استيراد Excel: '+(err?.message||err))}
@@ -104,7 +108,7 @@ async function nfc(c,mode){
   if(nfcListener)await nfcListener.remove();
   nfcListener=await CapacitorNfc.addListener('nfcEvent',ev=>{
    const raw=ev?.tag?.id;
-   const uid=Array.isArray(raw)?raw.map(x=>Number(x).toString(16).padStart(2,'0')).join('').toUpperCase():String(raw||'').replace(/[^0-9A-F]/gi,'').toUpperCase();
+   const uid=Array.isArray(raw)?raw.map(x=>{const n=typeof x==='string'?parseInt(x,16):Number(x);return Number.isFinite(n)?n.toString(16).padStart(2,'0'):''}).join('').toUpperCase():String(raw||'').replace(/[^0-9A-F]/gi,'').toUpperCase();
    if(!uid)return;
    const st2=mode==='link'?c.students[+(modal.querySelector('#nfcStudent')?.value||0)]:c.students.find(x=>String(x.nfc||'').replace(/[^0-9A-F]/gi,'').toUpperCase()===uid);
    if(mode==='link'&&st2){st2.nfc=uid;modal.querySelector('#nfcStatus').textContent='✓ '+tr('link')+': '+st2.name}
@@ -113,7 +117,7 @@ async function nfc(c,mode){
    save();render();
   });
   modal.querySelector('#nfcStatus').textContent='قرّب بطاقة NFC من ظهر الهاتف…';
-  await CapacitorNfc.startScanning({invalidateAfterFirstRead:false,iosSessionType:'tag',alertMessage:'بطاقة الطالب'});
+  await CapacitorNfc.startScanning({invalidateAfterFirstRead:false,iosSessionType:'tag',alertMessage:'قرّب بطاقة الطالب من الهاتف'});
  }catch(err){modal.querySelector('#nfcStatus').textContent='خطأ NFC: '+(err?.message||String(err))}
 }
 async function stopNfc(m){try{await CapacitorNfc.stopScanning();if(nfcListener)await nfcListener.remove()}catch{}m.remove()}
