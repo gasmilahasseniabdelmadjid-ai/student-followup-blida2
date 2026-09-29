@@ -1,6 +1,5 @@
 # PRODUCTION_VERSION = 2026-09-29-ui-fix-2
 import os, io, csv, json, secrets, sqlite3, urllib.request
-from svglib.svglib import svg2rlg
 from datetime import datetime
 from functools import wraps
 from flask import Flask, request, redirect, url_for, session, send_file, abort, render_template_string, Response
@@ -118,16 +117,6 @@ def pdf(code):
     st=getSampleStyleSheet(); base=ParagraphStyle("base",parent=st["Normal"],fontName="DejaVu",fontSize=8.5,leading=13,alignment=TA_RIGHT if l=="ar" else TA_CENTER)
     title=ParagraphStyle("title",parent=base,fontName="DejaVuBold",fontSize=15,leading=20,alignment=TA_CENTER,textColor=colors.HexColor("#14532d"))
     doc=SimpleDocTemplate(path,pagesize=A4,rightMargin=35,leftMargin=35,topMargin=32,bottomMargin=32); story=[]
-    try:
-        logo_path=os.path.join(os.path.dirname(__file__),"static","univ-blida2-logo.svg")
-        drawing=svg2rlg(logo_path)
-        scale=min(72/drawing.width,72/drawing.height)
-        drawing.scale(scale,scale)
-        drawing.width*=scale
-        drawing.height*=scale
-        story += [drawing,Spacer(1,4)]
-    except Exception:
-        pass
     story += [Paragraph(tx(T[l]["univ"]),title),Paragraph(tx(T[l]["vice"]),base),Spacer(1,8),Paragraph(tx({"ar":"وصل التصريح بالنشر العلمي","fr":"Reçu de déclaration de publication scientifique","en":"Scientific Publication Declaration Receipt"}[l]),title),Paragraph(tx(f"{T[l]['code']}: {code}"),base),Paragraph(tx(s["submitted_at"]),base),Spacer(1,10)]
     rows=[[Paragraph(tx(T[l]["item"]),base),Paragraph(tx(T[l]["info"]),base)]]
     fields=[("ar_name","arabic_name"),("en_name","english_name"),("rank","rank"),("faculty","faculty"),("department","department"),("spec","specialization"),("lab","laboratory")]
