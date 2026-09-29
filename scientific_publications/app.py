@@ -277,8 +277,8 @@ def admin():
 @app.get("/admin/export.csv")
 @admin_required
 def export_csv():
-    c=db();rows=c.execute("SELECT s.receipt_code,s.arabic_name,s.english_name,s.rank,s.faculty,s.department,s.specialization,s.laboratory,s.submitted_at,p.article_title,p.journal_name,p.classification,p.databases,p.publication_year,p.article_url,p.scholar_url FROM submissions s JOIN publications p ON p.submission_id=s.id ORDER BY s.id DESC,p.id").fetchall();c.close()
-    out=io.StringIO();w=csv.writer(out);w.writerow(["receipt_code","arabic_name","english_name","rank","faculty","department","specialization","laboratory","submitted_at","article_title","journal_name","classification","databases","publication_year","article_url","scholar_url"]);[w.writerow(list(r)) for r in rows]
+    c=db();rows=c.execute("SELECT s.receipt_code,s.arabic_name,s.english_name,s.rank,s.faculty,s.department,s.specialization,s.laboratory,s.submitted_at,p.publication_type,p.article_title,p.article_title_en,p.journal_name,p.classification,p.databases,p.publication_year,p.article_url,p.scholar_url,p.book_title,p.book_type,p.publisher,p.book_year,p.excerpt_url,p.cover_path FROM submissions s JOIN publications p ON p.submission_id=s.id ORDER BY s.id DESC,p.id").fetchall();c.close()
+    out=io.StringIO();w=csv.writer(out);w.writerow(["receipt_code","arabic_name","english_name","rank","faculty","department","specialization","laboratory","submitted_at","publication_type","article_title","article_title_en","journal_name","classification","databases","publication_year","article_url","scholar_url","book_title","book_type","publisher","book_year","excerpt_url","cover_path"]);[w.writerow(list(r)) for r in rows]
     return send_file(io.BytesIO(out.getvalue().encode("utf-8-sig")),mimetype="text/csv",as_attachment=True,download_name="blida2_scientific_publications.csv")
 
 @app.post("/logout")
