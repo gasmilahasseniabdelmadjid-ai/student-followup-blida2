@@ -167,41 +167,79 @@ def health(): return {"status":"ok","service":"blida2-scientific-publications"}
 
 @app.get("/")
 def index():
-    body=page_header()+f"""<main class="container"><section class="card"><h2>{tr("survey")}</h2><p>{tr("intro")}</p><div class="notice">{tr("notice")}</div></section>
-<form class="card" method="post" action="/submit" id="f"><input type="hidden" name="csrf_token" value="{csrf()}"><h2>{tr("general")}</h2><div class="grid">
+    body=page_header()+f"""<main class="container"><section class="card"><h2>{tr("platform")}</h2><p>{tr("intro")}</p><div class="notice">{tr("notice")}</div></section>
+<form class="card" method="post" action="/submit" id="f" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{csrf()}">
+<h2>{tr("general")}</h2><div class="grid">
 <label>{tr("ar_name")} *<input name="arabic_name" required></label><label>{tr("en_name")} *<input name="english_name" required></label>
 <label>{tr("rank")} *<select name="rank" required><option value="">{tr("choose")}</option>{''.join(f'<option>{x}</option>' for x in RANKS)}</select></label>
 <label>{tr("faculty")} *<input name="faculty" required></label><label>{tr("department")} *<input name="department" required></label><label>{tr("spec")} *<input name="specialization" required></label>
 <label class="full">{tr("lab")} *<input name="laboratory" required></label></div>
-<div class="head"><h2>{tr("pubs")}</h2><button type="button" class="secondary" onclick="addArticle()">+ {tr("add")}</button></div><div id="articles"></div>
+<div class="head"><h2>{tr("pubs")}</h2><button type="button" class="secondary" onclick="addPublication()">+ {tr("add")}</button></div><div id="publications"></div>
 <div class="actions"><button class="primary" type="submit">{tr("submit")}</button><button class="ghost" type="button" onclick="location.reload()">{tr("clear")}</button></div></form></main><footer>{tr("footer")}</footer>
-<template id="tpl"><article class="article"><div class="head"><h3>#<span class="n"></span></h3><button type="button" class="danger" onclick="this.closest('.article').remove();renumber()">×</button></div><div class="grid">
-<label class="full">{tr("article")} *<textarea name="article_title[]" rows="2" required></textarea></label><label>{tr("journal")} *<input name="journal_name[]" required></label>
-<label>{tr("class")} *<select name="classification[]" required>{''.join(f'<option>{x}</option>' for x in CLASSIFICATIONS)}</select></label><label>{tr("year")} *<input type="number" name="publication_year[]" min="1900" max="{datetime.now().year+1}" required></label>
+<template id="tpl"><article class="article"><div class="head"><h3>#<span class="n"></span></h3><button type="button" class="danger" onclick="this.closest('.article').remove();renumber()">×</button></div>
+<label>{tr("pub_type")} *<select class="ptype" name="publication_type[]" required onchange="togglePublication(this)"><option value="article">{tr("article_type")}</option><option value="book">{tr("book_type_label")}</option></select></label>
+<div class="article-fields"><div class="grid">
+<label class="full">{tr("article")} *<textarea name="article_title[]" rows="2" required></textarea></label>
+<label class="full">{tr("article_title_en")} *<textarea name="article_title_en[]" rows="2" required></textarea></label>
+<label>{tr("journal")} *<input name="journal_name[]" required></label><label>{tr("class")} *<select name="classification[]" required>{''.join(f'<option>{x}</option>' for x in CLASSIFICATIONS)}</select></label>
+<label>{tr("year")} *<input type="number" name="publication_year[]" min="1900" max="{datetime.now().year+1}" required></label>
 <label class="full">{tr("db")}<select class="db" multiple size="4">{''.join(f'<option value="{x}">{x}</option>' for x in DATABASES)}</select><input type="hidden" class="dbj" name="databases_json[]"><span class="hint">{tr("multi")}</span></label>
-<label>{tr("url")}<input type="url" name="article_url[]" placeholder="https://..."></label><label>{tr("scholar")}<input type="url" name="scholar_url[]" placeholder="https://scholar.google.com/..."></label></div></article></template>
-<script>const box=document.getElementById('articles'),tpl=document.getElementById('tpl'),form=document.getElementById('f');function addArticle(){{box.appendChild(tpl.content.cloneNode(true));renumber()}}function renumber(){{[...box.children].forEach((x,i)=>x.querySelector('.n').textContent=i+1)}}form.addEventListener('submit',()=>box.querySelectorAll('.article').forEach(a=>a.querySelector('.dbj').value=JSON.stringify([...a.querySelectorAll('.db option:checked')].map(x=>x.value))));addArticle();</script>"""
+<label>{tr("url")}<input type="url" name="article_url[]" placeholder="https://..."></label><label>{tr("scholar")}<input type="url" name="scholar_url[]" placeholder="https://scholar.google.com/..."></label></div></div>
+<div class="book-fields" style="display:none"><div class="grid">
+<label class="full">{tr("book_title")} *<input name="book_title[]" disabled></label><label>{tr("book_kind")} *<select name="book_type[]" disabled><option value="">{tr("choose")}</option><option value="علمي">{tr("scientific")}</option><option value="بيداغوجي">{tr("pedagogical")}</option></select></label>
+<label>{tr("publisher")} *<input name="publisher[]" disabled></label><label>{tr("book_year")} *<input type="number" name="book_year[]" min="1900" max="{datetime.now().year+1}" disabled></label>
+<label class="full">{tr("excerpt")}<input type="url" name="excerpt_url[]" placeholder="https://..." disabled></label>
+<label class="full">{tr("cover")} *<input class="cover" type="file" name="cover[]" accept="image/png,image/jpeg,image/webp" disabled><span class="hint">{tr("cover_hint")}</span></label>
+</div></div></article></template>
+<script>
+const box=document.getElementById('publications'),tpl=document.getElementById('tpl'),form=document.getElementById('f');
+function addPublication(){box.appendChild(tpl.content.cloneNode(true));renumber()}
+function renumber(){[...box.children].forEach((x,i)=>x.querySelector('.n').textContent=i+1)}
+function togglePublication(sel){const card=sel.closest('.article'),isBook=sel.value==='book';card.querySelector('.article-fields').style.display=isBook?'none':'block';card.querySelector('.book-fields').style.display=isBook?'block':'none';card.querySelectorAll('.article-fields input,.article-fields textarea,.article-fields select').forEach(x=>x.disabled=isBook);card.querySelectorAll('.book-fields input,.book-fields select').forEach(x=>x.disabled=!isBook);card.querySelectorAll('.article-fields [required]').forEach(x=>x.required=!isBook);card.querySelectorAll('.book-fields [required]').forEach(x=>x.required=isBook)}
+form.addEventListener('submit',()=>box.querySelectorAll('.article').forEach(a=>a.querySelector('.dbj').value=JSON.stringify([...a.querySelectorAll('.db option:checked')].map(x=>x.value))));
+addPublication();
+</script>"""
     return layout(body)
 
 @app.post("/submit")
 def submit():
-    check_csrf(); vals={k:request.form.get(k,"").strip() for k in ["arabic_name","english_name","rank","faculty","department","specialization","laboratory"]}
-    if not all(vals.values()) or vals["rank"] not in RANKS: return redirect(url_for("index",lang=lang()))
-    titles=request.form.getlist("article_title[]"); journals=request.form.getlist("journal_name[]"); classes=request.form.getlist("classification[]"); years=request.form.getlist("publication_year[]"); urls=request.form.getlist("article_url[]"); scholars=request.form.getlist("scholar_url[]"); dbjs=request.form.getlist("databases_json[]")
-    if not titles:return redirect(url_for("index",lang=lang()))
-    code=code_new(); now=datetime.now().strftime("%Y-%m-%d %H:%M:%S"); c=db()
+    check_csrf()
+    vals={k:request.form.get(k,"").strip() for k in ["arabic_name","english_name","rank","faculty","department","specialization","laboratory"]}
+    if not all(vals.values()) or vals["rank"] not in RANKS:return redirect(url_for("index",lang=lang()))
+    types=request.form.getlist("publication_type[]")
+    titles=request.form.getlist("article_title[]"); titles_en=request.form.getlist("article_title_en[]"); journals=request.form.getlist("journal_name[]"); classes=request.form.getlist("classification[]"); years=request.form.getlist("publication_year[]"); urls=request.form.getlist("article_url[]"); scholars=request.form.getlist("scholar_url[]"); dbjs=request.form.getlist("databases_json[]")
+    book_titles=request.form.getlist("book_title[]"); book_types=request.form.getlist("book_type[]"); publishers=request.form.getlist("publisher[]"); book_years=request.form.getlist("book_year[]"); excerpt_urls=request.form.getlist("excerpt_url[]"); covers=request.files.getlist("cover[]")
+    if not types:return redirect(url_for("index",lang=lang()))
+    code=code_new(); now=datetime.now().strftime("%Y-%m-%d %H:%M:%S"); c=db(); saved_covers=[]
     try:
         sid=c.execute("INSERT INTO submissions(receipt_code,arabic_name,english_name,rank,faculty,department,specialization,laboratory,submitted_at,language) VALUES(?,?,?,?,?,?,?,?,?,?)",(code,*[vals[x] for x in ["arabic_name","english_name","rank","faculty","department","specialization","laboratory"]],now,lang())).lastrowid
-        for i,title in enumerate(titles):
-            title=title.strip(); journal=journals[i].strip(); cls=classes[i].strip(); yi=int(years[i])
-            if not title or not journal or cls not in CLASSIFICATIONS or yi<1900 or yi>datetime.now().year+1: raise ValueError()
-            try:selected=json.loads(dbjs[i])
-            except Exception:selected=[]
-            selected=[x for x in selected if x in DATABASES]; selected=selected or ["Not indexed"]
-            c.execute("INSERT INTO publications(submission_id,article_title,journal_name,classification,databases,publication_year,article_url,scholar_url) VALUES(?,?,?,?,?,?,?,?)",(sid,title,journal,cls,",".join(selected),yi,urls[i].strip() if i<len(urls) else "",scholars[i].strip() if i<len(scholars) else ""))
+        for i,typ in enumerate(types):
+            if typ=="article":
+                title=titles[i].strip() if i<len(titles) else ""; title_en=titles_en[i].strip() if i<len(titles_en) else ""; journal=journals[i].strip() if i<len(journals) else ""; cls=classes[i].strip() if i<len(classes) else ""; yi=int(years[i]) if i<len(years) and years[i] else 0
+                if not title or not title_en or not journal or cls not in CLASSIFICATIONS or yi<1900 or yi>datetime.now().year+1:raise ValueError()
+                try:selected=json.loads(dbjs[i])
+                except Exception:selected=[]
+                selected=[x for x in selected if x in DATABASES] or ["Not indexed"]
+                c.execute("INSERT INTO publications(submission_id,publication_type,article_title,article_title_en,journal_name,classification,databases,publication_year,article_url,scholar_url) VALUES(?,?,?,?,?,?,?,?,?,?)",(sid,"article",title,title_en,journal,cls,",".join(selected),yi,urls[i].strip() if i<len(urls) else "",scholars[i].strip() if i<len(scholars) else ""))
+            elif typ=="book":
+                bt=book_titles[i].strip() if i<len(book_titles) else ""; bk=book_types[i].strip() if i<len(book_types) else ""; pub=publishers[i].strip() if i<len(publishers) else ""; by=int(book_years[i]) if i<len(book_years) and book_years[i] else 0
+                if not bt or bk not in ("علمي","بيداغوجي") or not pub or by<1900 or by>datetime.now().year+1:raise ValueError()
+                f=covers[i] if i<len(covers) else None
+                if not f or not f.filename:raise ValueError()
+                ext=os.path.splitext(secure_filename(f.filename))[1].lower()
+                if ext not in (".png",".jpg",".jpeg",".webp"):raise ValueError()
+                f.stream.seek(0); im=PILImage.open(f.stream); im.verify(); f.stream.seek(0)
+                if (f.content_length or 0)>5*1024*1024:raise ValueError()
+                fname=secrets.token_hex(16)+ext; cover_path=os.path.join(COVERS,fname); f.save(cover_path); saved_covers.append(cover_path)
+                c.execute("INSERT INTO publications(submission_id,publication_type,article_title,article_title_en,journal_name,classification,databases,publication_year,article_url,scholar_url,book_title,book_type,publisher,book_year,excerpt_url,cover_path) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(sid,"book",bt,"","","","",0,"","",bt,bk,pub,by,excerpt_urls[i].strip() if i<len(excerpt_urls) else "",cover_path))
+            else:raise ValueError()
         c.commit()
     except Exception:
-        c.rollback();c.close();return redirect(url_for("index",lang=lang()))
+        c.rollback();c.close()
+        for fp in saved_covers:
+            try:os.remove(fp)
+            except Exception:pass
+        return redirect(url_for("index",lang=lang()))
     c.close();pdf(code);return redirect(url_for("success",code=code,lang=lang()))
 
 @app.get("/success/<code>")
