@@ -1,25 +1,20 @@
-# Student Follow-up — University of Blida 2
+# Blida 2 Scientific Publications Platform
 
-مستودع بناء تطبيق **بطاقة متابعة الطلبة — جامعة البليدة 2**.
+منصة إنتاجية لجمع بيانات النشر العلمي لأساتذة وطلبة الدكتوراه بجامعة البليدة 2.
 
-## البناء
-يتم بناء APK على GitHub Actions باستخدام Node.js 22 وJava 21 وAndroid API 36.
+- العربية / الفرنسية / الإنجليزية
+- عدة مقالات في إرسال واحد
+- تصنيف A+ / A / B / C / غير مصنف
+- Scopus / Web of Science / ASJP / Google Scholar / DOAJ / أخرى / غير مفهرس
+- وصل PDF يحتوي البيانات والباركود وQR للتحقق
+- صفحة تحقق عامة
+- لوحة إدارة وتصدير CSV
+- SQLite مع WAL ومجلد بيانات دائم
+- حماية CSRF والجلسات الآمنة وترويسات أمنية
+- Docker / Docker Compose
+- Healthcheck على /healthz
 
-قبل التشغيل، أضف في **Settings → Secrets and variables → Actions**:
-- SFC_KEYSTORE_B64
-- SFC_KEY_ALIAS
-- SFC_KEYSTORE_PASSWORD
-- SFC_KEY_PASSWORD
-
-لا ترسل قيم الأسرار داخل المحادثة.
-
-بعد ذلك افتح **Actions → Build Direct APK → Run workflow**.
-
-<!-- CI build pipeline updated -->
-
-<!-- Production signing verification trigger: 2026-09-27 -->
-
-<!-- Repository secrets verification: 2026-09-27 -->
-
-
-<!-- Excel import template support -->
+## Railway
+اضبط SECRET_KEY وADMIN_PASSWORD وDATA_DIR=/app/data.
+اربط Volume دائم على /app/data.
+اضبط Healthcheck على /healthz وأنشئ نطاقاً عاماً بعد نجاح النشر.
