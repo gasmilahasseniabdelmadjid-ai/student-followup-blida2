@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+<defs>
+<path id="top" d="M85,205 A165,165 0 0,1 415,205"/>
+<path id="bot" d="M65,315 A185,185 0 0,0 435,315"/>
+</defs>
+<circle cx="250" cy="250" r="244" fill="#a9c75b"/>
+<circle cx="250" cy="250" r="148" fill="#ffc17f" stroke="#173f25" stroke-width="3"/>
+<path d="M112 205 L250 135 L388 205 Z" fill="#d92d2d"/>
+<path d="M205 160 L250 184 L295 160 L250 160 Z" fill="white"/>
+<circle cx="250" cy="226" r="14" fill="#d92d2d"/>
+<g fill="none" stroke="#214b2c" stroke-width="3">
+<path d="M35 205 C150 205 175 235 205 275 C220 294 205 315 205 315"/>
+<path d="M35 214 C150 214 178 243 212 282 C227 299 212 325 212 325"/>
+<path d="M35 223 C150 223 181 252 219 289 C235 305 219 335 219 335"/>
+<path d="M465 205 C350 205 325 235 295 275 C280 294 295 315 295 315"/>
+<path d="M465 214 C350 214 322 243 288 282 C273 299 288 325 288 325"/>
+<path d="M465 223 C350 223 319 252 281 289 C265 305 281 335 281 335"/>
+<circle cx="250" cy="360" r="18"/>
+<circle cx="250" cy="360" r="11"/>
+</g>
+<g stroke="#e58c32" stroke-width="2">
+<path d="M250 102V70"/><path d="M207 108L194 78"/><path d="M293 108L306 78"/><path d="M166 130L145 105"/><path d="M334 130L355 105"/>
+</g>
+<text font-family="Arial,Tahoma,sans-serif" font-size="29" font-weight="700" fill="#050505" text-anchor="middle"><textPath href="#top" startOffset="50%">جامعة البليدة 2 لونيسي علي</textPath></text>
+<text font-family="Times New Roman,serif" font-size="27" font-style="italic" fill="#050505" text-anchor="middle"><textPath href="#bot" startOffset="50%">Université Blida 2 Lounici Ali</textPath></text>
+</svg>
