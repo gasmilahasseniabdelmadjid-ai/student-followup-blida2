@@ -121,33 +121,45 @@ def pdf(code):
         bcp=bcpath+".png"
         verify_url=request.host_url.rstrip("/")+url_for("verify",code=code)
         qrp=os.path.join(RECEIPTS,code+"_qr.png"); qrcode.make(verify_url).save(qrp)
-    except Exception:bcp=qrp=None
-    l=s["language"] if s["language"] in T else "ar"; tx=lambda x:ar(x) if l=="ar" else str(x)
-    st=getSampleStyleSheet(); base=ParagraphStyle("base",parent=st["Normal"],fontName="DejaVu",fontSize=8.5,leading=13,alignment=TA_RIGHT if l=="ar" else TA_CENTER)
+    except Exception:
+        bcp=qrp=None
+    l=s["language"] if s["language"] in T else "ar"; rtl=(l=="ar")
+    tx=lambda x:ar(x) if rtl else str(x)
+    st=getSampleStyleSheet()
+    base=ParagraphStyle("base",parent=st["Normal"],fontName="DejaVu",fontSize=8.5,leading=13,alignment=TA_RIGHT if rtl else TA_LEFT)
+    center=ParagraphStyle("center",parent=base,alignment=TA_CENTER)
     title=ParagraphStyle("title",parent=base,fontName="DejaVuBold",fontSize=15,leading=20,alignment=TA_CENTER,textColor=colors.HexColor("#14532d"))
-    doc=SimpleDocTemplate(path,pagesize=A4,rightMargin=35,leftMargin=35,topMargin=32,bottomMargin=32); story=[]
+    doc=SimpleDocTemplate(path,pagesize=A4,rightMargin=35,leftMargin=35,topMargin=28,bottomMargin=32); story=[]
     try:
         logo_data=urllib.request.urlopen("https://elearning.univ-blida2.dz/pluginfile.php?file=%2F1%2Ftheme_academi%2Flogo%2F1766305366%2Flogo.png",timeout=8).read()
-        story += [Image(io.BytesIO(logo_data),width=88,height=88),Spacer(1,4)]
-    except Exception:
-        pass
-    story += [Paragraph(tx(T[l]["univ"]),title),Paragraph(tx(T[l]["vice"]),base),Spacer(1,8),Paragraph(tx({"ar":"وصل التصريح بالنشر العلمي","fr":"Reçu de déclaration de publication scientifique","en":"Scientific Publication Declaration Receipt"}[l]),title),Paragraph(tx(f"{T[l]['code']}: {code}"),base),Paragraph(tx(s["submitted_at"]),base),Spacer(1,10)]
+        story += [Image(io.BytesIO(logo_data),width=82,height=82),Spacer(1,3)]
+    except Exception: pass
+    receipt_title={"ar":"وصل التصريح بالنشر العلمي","fr":"Reçu de déclaration de publication scientifique","en":"Scientific Publication Declaration Receipt"}[l]
+    story += [Paragraph(tx(T[l]["univ"]),title),Paragraph(tx(T[l]["vice"]),center),Spacer(1,6),Paragraph(tx(receipt_title),title),Paragraph(tx(f"{T[l]['code']}: {code}"),center),Paragraph(tx(s["submitted_at"]),center),Spacer(1,9)]
+    def make_table(rows):
+        if rtl: rows=[[b,a] for a,b in rows]; widths=[365,145]
+        else: widths=[145,365]
+        t=Table(rows,colWidths=widths,hAlign="RIGHT" if rtl else "LEFT")
+        t.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.5,colors.HexColor("#cbd5e1")),("BACKGROUND",(0,0),(-1,0),colors.HexColor("#e8f5e9")),("VALIGN",(0,0),(-1,-1),"TOP"),("ALIGN",(0,0),(-1,-1),"RIGHT" if rtl else "LEFT"),("PADDING",(0,0),(-1,-1),5)]))
+        return t
     rows=[[Paragraph(tx(T[l]["item"]),base),Paragraph(tx(T[l]["info"]),base)]]
-    fields=[("ar_name","arabic_name"),("en_name","english_name"),("rank","rank"),("faculty","faculty"),("department","department"),("spec","specialization"),("lab","laboratory")]
-    for label,key in fields: rows.append([Paragraph(tx(T[l][label]),base),Paragraph(tx(s[key]),base)])
-    t=Table(rows,colWidths=[145,365]);t.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.5,colors.HexColor("#cbd5e1")),("BACKGROUND",(0,0),(-1,0),colors.HexColor("#e8f5e9")),("VALIGN",(0,0),(-1,-1),"TOP"),("PADDING",(0,0),(-1,-1),5)]));story += [t,Spacer(1,12)]
+    for label,key in [("ar_name","arabic_name"),("en_name","english_name"),("rank","rank"),("faculty","faculty"),("department","department"),("spec","specialization"),("lab","laboratory")]:
+        rows.append([Paragraph(tx(T[l][label]),base),Paragraph(tx(s[key]),base)])
+    story += [make_table(rows),Spacer(1,12)]
     for i,x in enumerate(p,1):
-        rows=[[Paragraph(tx(T[l]["item"]),base),Paragraph(tx(T[l]["info"]),base)],
-        [Paragraph(tx(T[l]["article"]),base),Paragraph(tx(x["article_title"]),base)],
-        [Paragraph(tx(T[l]["journal"]),base),Paragraph(tx(x["journal_name"]),base)],
-        [Paragraph(tx(T[l]["class"]),base),Paragraph(tx(x["classification"]),base)],
-        [Paragraph(tx(T[l]["db"]),base),Paragraph(tx(x["databases"].replace(",",", ")),base)],
-        [Paragraph(tx(T[l]["year"]),base),Paragraph(str(x["publication_year"]),base)],
-        [Paragraph(tx(T[l]["url"]),base),Paragraph(tx(x["article_url"] or "—"),base)],
-        [Paragraph(tx(T[l]["scholar"]),base),Paragraph(tx(x["scholar_url"] or "—"),base)]]
-        pt=Table(rows,colWidths=[145,365]);pt.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.5,colors.HexColor("#cbd5e1")),("BACKGROUND",(0,0),(-1,0),colors.HexColor("#f0fdf4")),("VALIGN",(0,0),(-1,-1),"TOP"),("PADDING",(0,0),(-1,-1),5)]));story += [Paragraph(tx(f"{T[l]['pubs']} — {i}"),title),pt,Spacer(1,9)]
-    if bcp and os.path.exists(bcp): story += [Spacer(1,5),Image(bcp,width=360,height=65),Paragraph(tx(code),ParagraphStyle("bc",parent=base,alignment=TA_CENTER))]
-    if qrp and os.path.exists(qrp): story += [Spacer(1,4),Image(qrp,width=82,height=82),Paragraph(tx(T[l]["scan"]),ParagraphStyle("qr",parent=base,alignment=TA_CENTER))]
+        typ=x["publication_type"] or "article"
+        if typ=="book":
+            rows=[[Paragraph(tx(T[l]["item"]),base),Paragraph(tx(T[l]["info"]),base)],[Paragraph(tx(T[l]["book_title"]),base),Paragraph(tx(x["book_title"] or "—"),base)],[Paragraph(tx(T[l]["book_kind"]),base),Paragraph(tx(x["book_type"] or "—"),base)],[Paragraph(tx(T[l]["publisher"]),base),Paragraph(tx(x["publisher"] or "—"),base)],[Paragraph(tx(T[l]["book_year"]),base),Paragraph(str(x["book_year"] or "—"),base)],[Paragraph(tx(T[l]["excerpt"]),base),Paragraph(tx(x["excerpt_url"] or "—"),base)]]
+            story += [Paragraph(tx(f"{T[l]['book_type_label']} — {i}"),title),make_table(rows)]
+            if x["cover_path"] and os.path.exists(x["cover_path"]):
+                try: story += [Spacer(1,5),Paragraph(tx(T[l]["cover"]),center),Image(x["cover_path"],width=125,height=155,preserveAspectRatio=True)]
+                except Exception: pass
+            story += [Spacer(1,10)]
+        else:
+            rows=[[Paragraph(tx(T[l]["item"]),base),Paragraph(tx(T[l]["info"]),base)],[Paragraph(tx(T[l]["article"]),base),Paragraph(tx(x["article_title"] or "—"),base)],[Paragraph(tx(T[l]["article_title_en"]),base),Paragraph(tx(x["article_title_en"] or "—"),base)],[Paragraph(tx(T[l]["journal"]),base),Paragraph(tx(x["journal_name"] or "—"),base)],[Paragraph(tx(T[l]["class"]),base),Paragraph(tx(x["classification"] or "—"),base)],[Paragraph(tx(T[l]["db"]),base),Paragraph(tx(x["databases"] or "—"),base)],[Paragraph(tx(T[l]["year"]),base),Paragraph(str(x["publication_year"] or "—"),base)],[Paragraph(tx(T[l]["url"]),base),Paragraph(tx(x["article_url"] or "—"),base)],[Paragraph(tx(T[l]["scholar"]),base),Paragraph(tx(x["scholar_url"] or "—"),base)]]
+            story += [Paragraph(tx(f"{T[l]['article_type']} — {i}"),title),make_table(rows),Spacer(1,10)]
+    if bcp and os.path.exists(bcp): story += [Spacer(1,3),Image(bcp,width=360,height=65),Paragraph(tx(code),center)]
+    if qrp and os.path.exists(qrp): story += [Spacer(1,3),Image(qrp,width=82,height=82),Paragraph(tx(T[l]["scan"]),center)]
     doc.build(story); return path
 
 @app.get("/healthz")
