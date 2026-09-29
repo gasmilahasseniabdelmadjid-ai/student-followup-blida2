@@ -1,5 +1,5 @@
 # PRODUCTION_VERSION = 2026-09-29-ui-fix-2
-import os, io, csv, json, secrets, sqlite3, urllib.request
+import os, io, csv, json, secrets, sqlite3
 from datetime import datetime
 from functools import wraps
 from flask import Flask, request, redirect, url_for, session, send_file, abort, render_template_string, Response
@@ -101,7 +101,7 @@ def layout(body,title=None):
 
 def page_header():
     return f"""<header class="hero"><div class="top"><div class="langs"><a href="?lang=ar">العربية</a><a href="?lang=fr">Français</a><a href="?lang=en">English</a></div>
-<div class="brand"><img class="univ-logo" src="https://elearning.univ-blida2.dz/pluginfile.php?file=%2F1%2Ftheme_academi%2Flogo%2F1766305366%2Flogo.png" alt="جامعة البليدة2"><div><h1>{tr("univ")}</h1><p>{tr("vice")}</p><p>{tr("platform")}</p></div></div></div></header>"""
+<div class="brand"><img class="univ-logo" src="{{ url_for('static', filename='university-logo.jpg') }}" alt="جامعة البليدة2"><div><h1>{tr("univ")}</h1><p>{tr("vice")}</p><p>{tr("platform")}</p></div></div></div></header>"""
 def get_submission(code):
     c=db(); s=c.execute("SELECT * FROM submissions WHERE receipt_code=?",(code,)).fetchone()
     if not s:c.close();return None,[]
@@ -131,7 +131,8 @@ def pdf(code):
     title=ParagraphStyle("title",parent=base,fontName="DejaVuBold",fontSize=15,leading=20,alignment=TA_CENTER,textColor=colors.HexColor("#14532d"))
     doc=SimpleDocTemplate(path,pagesize=A4,rightMargin=35,leftMargin=35,topMargin=28,bottomMargin=32); story=[]
     try:
-        logo_data=urllib.request.urlopen("https://elearning.univ-blida2.dz/pluginfile.php?file=%2F1%2Ftheme_academi%2Flogo%2F1766305366%2Flogo.png",timeout=8).read()
+        logo_path=os.path.join(BASE,"static","university-logo.jpg")
+        with open(logo_path,"rb") as _lf: logo_data=_lf.read()
         story += [Image(io.BytesIO(logo_data),width=82,height=82),Spacer(1,3)]
     except Exception: pass
     receipt_title={"ar":"وصل التصريح بالنشر العلمي","fr":"Reçu de déclaration de publication scientifique","en":"Scientific Publication Declaration Receipt"}[l]
