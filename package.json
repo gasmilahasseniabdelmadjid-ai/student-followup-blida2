@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "validate": "node scripts/validate.mjs"
+    "validate": "node scripts/validate.mjs",
+    "start": "node server.js"
   },
   "dependencies": {
     "@capacitor/core": "^8.0.0",
