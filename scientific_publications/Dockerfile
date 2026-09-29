@@ -4,7 +4,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu &&
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-COPY . .
+COPY scientific_publications/requirements.txt ./requirements.txt
+COPY scientific_publications/app.py ./app.py
 RUN mkdir -p /app/data/receipts
 EXPOSE 8080
 CMD ["sh","-c","exec gunicorn --workers 2 --threads 2 --timeout 120 --graceful-timeout 30 --access-logfile - --error-logfile - --bind 0.0.0.0:8080 app:app"]
