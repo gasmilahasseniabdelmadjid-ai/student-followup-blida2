@@ -33,6 +33,10 @@ if os.path.exists(FONT): pdfmetrics.registerFont(TTFont("DejaVu",FONT))
 if os.path.exists(BOLD): pdfmetrics.registerFont(TTFont("DejaVuBold",BOLD))
 
 app=Flask(__name__)
+@app.get("/healthz")
+def healthz():
+    return {"status":"ok"}, 200
+
 app.wsgi_app=ProxyFix(app.wsgi_app,x_for=1,x_proto=1,x_host=1)
 app.secret_key=os.environ.get("SECRET_KEY","local-change-this")
 app.config.update(SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE="Lax",MAX_CONTENT_LENGTH=8*1024*1024)
