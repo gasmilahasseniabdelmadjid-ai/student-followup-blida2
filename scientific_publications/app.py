@@ -1,4 +1,5 @@
 # PRODUCTION_VERSION = 2026-09-30-meeting-v3-production
+# RAILWAY_SYNC_TRIGGER = main
 import os, io, csv, json, secrets, sqlite3
 from datetime import datetime
 from functools import wraps
