@@ -2,9 +2,9 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PORT=8080
 RUN useradd --create-home --uid 10001 appuser
 WORKDIR /app
-COPY scientific_publications/requirements.txt ./requirements.txt
+COPY requirements.txt .
 RUN pip install -r requirements.txt
-COPY scientific_publications/ ./
+COPY . .
 RUN mkdir -p /app/data/receipts /app/data/covers && chown -R appuser:appuser /app
 USER appuser
 EXPOSE 8080
