@@ -210,9 +210,9 @@ def index():
 </div></div></article></template>
 <script>
 const box=document.getElementById('publications'),tpl=document.getElementById('tpl'),form=document.getElementById('f');
-function addPublication(){box.appendChild(tpl.content.cloneNode(true));renumber()}
-function renumber(){[...box.children].forEach((x,i)=>x.querySelector('.n').textContent=i+1)}
-function togglePublication(sel){const card=sel.closest('.article'),isBook=sel.value==='book';card.querySelector('.article-fields').style.display=isBook?'none':'block';card.querySelector('.book-fields').style.display=isBook?'block':'none';card.querySelectorAll('.article-fields input,.article-fields textarea,.article-fields select').forEach(x=>x.disabled=isBook);card.querySelectorAll('.book-fields input:not([type="file"]),.book-fields select').forEach(x=>x.disabled=!isBook);card.querySelectorAll('.book-fields input[type="file"]').forEach(x=>x.disabled=!isBook);card.querySelectorAll('.article-fields [required]').forEach(x=>x.required=!isBook);card.querySelectorAll('.book-fields [required]').forEach(x=>x.required=isBook)}
+function addPublication(){{box.appendChild(tpl.content.cloneNode(true));renumber()}}
+function renumber(){{[...box.children].forEach((x,i)=>x.querySelector('.n').textContent=i+1)}}
+function togglePublication(sel){{const card=sel.closest('.article'),isBook=sel.value==='book';card.querySelector('.article-fields').style.display=isBook?'none':'block';card.querySelector('.book-fields').style.display=isBook?'block':'none';card.querySelectorAll('.article-fields input,.article-fields textarea,.article-fields select').forEach(x=>x.disabled=isBook);card.querySelectorAll('.book-fields input:not([type="file"]),.book-fields select').forEach(x=>x.disabled=!isBook);card.querySelectorAll('.book-fields input[type="file"]').forEach(x=>x.disabled=!isBook);card.querySelectorAll('.article-fields [required]').forEach(x=>x.required=!isBook);card.querySelectorAll('.book-fields [required]').forEach(x=>x.required=isBook)}}
 form.addEventListener('submit',()=>box.querySelectorAll('.article').forEach(a=>a.querySelector('.dbj').value=JSON.stringify([...a.querySelectorAll('.db option:checked')].map(x=>x.value))));
 addPublication();
 </script>"""
