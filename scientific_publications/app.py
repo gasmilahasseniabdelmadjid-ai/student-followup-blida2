@@ -2,6 +2,7 @@
 # RAILWAY_SYNC_TRIGGER = main
 import os, io, csv, json, secrets, sqlite3
 from datetime import datetime
+from xml.sax.saxutils import escape as xml_escape
 from functools import wraps
 from flask import Flask, request, redirect, url_for, session, send_file, abort, render_template_string, Response
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -32,6 +33,7 @@ FONT="/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 BOLD="/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 if os.path.exists(FONT): pdfmetrics.registerFont(TTFont("DejaVu",FONT))
 if os.path.exists(BOLD): pdfmetrics.registerFont(TTFont("DejaVuBold",BOLD))
+pdfmetrics.registerFontFamily("DejaVu", normal="DejaVu", bold="DejaVuBold", italic="DejaVu", boldItalic="DejaVuBold")
 
 app=Flask(__name__)
 @app.get("/healthz")
@@ -141,7 +143,7 @@ def pdf(code):
     except Exception:
         bcp=qrp=None
     l=s["language"] if s["language"] in T else "ar"; rtl=(l=="ar")
-    tx=lambda x:ar(x) if rtl else str(x)
+    tx=lambda x:xml_escape(ar(x) if rtl else str(x))
     st=getSampleStyleSheet()
     base=ParagraphStyle("base",parent=st["Normal"],fontName="DejaVu",fontSize=8.5,leading=13,alignment=TA_RIGHT if rtl else TA_LEFT)
     center=ParagraphStyle("center",parent=base,alignment=TA_CENTER)
